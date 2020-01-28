@@ -8,13 +8,16 @@ class WrapTest {
 
   @Test
   void apply() {
+    fail("not implemented");
   }
 
   @Test
   void config() {
+    fail("not implemented");
   }
 
   @Test
   void configure() {
+    fail("not implemented");
   }
 }
