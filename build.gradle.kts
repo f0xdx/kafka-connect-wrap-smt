@@ -5,13 +5,18 @@ plugins {
   java
 }
 
+java {
+  sourceCompatibility = JavaVersion.VERSION_1_8
+  targetCompatibility = JavaVersion.VERSION_1_8
+}
+
 repositories {
   mavenCentral()
 }
 
-val junitVersion by extra("5.6.0")
-val kafkaVersion by extra("2.4.0")
-val lombokVersion by extra("1.18.10")
+val junitVersion by extra("5.6.1")
+val kafkaVersion by extra("2.3.1")
+val lombokVersion by extra("1.18.12")
 
 dependencies {
   // bom
@@ -23,11 +28,15 @@ dependencies {
   // implementation
   compileOnly("org.projectlombok:lombok:$lombokVersion")
   compileOnly("org.apache.kafka:connect-api:${kafkaVersion}")
-  compileOnly("org.apache.kafka:connect-transforms:${kafkaVersion}")
+  implementation("org.apache.kafka:connect-transforms:${kafkaVersion}")
 
   // test
+
+  testAnnotationProcessor("org.projectlombok:lombok:$lombokVersion")
+  testCompileOnly("org.projectlombok:lombok:$lombokVersion")
   testImplementation("org.apache.kafka:connect-api:${kafkaVersion}")
   testImplementation("org.junit.jupiter:junit-jupiter-api")
+  testImplementation("org.junit.jupiter:junit-jupiter-params")
   testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine")
 }
 
