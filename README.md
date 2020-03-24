@@ -2,7 +2,7 @@
 [![Coverage](https://sonarcloud.io/api/project_badges/measure?project=f0xdx_kafka-connect-wrap-smt&metric=coverage)](https://sonarcloud.io/dashboard?id=f0xdx_kafka-connect-wrap-smt)
 [![Reliability Rating](https://sonarcloud.io/api/project_badges/measure?project=f0xdx_kafka-connect-wrap-smt&metric=reliability_rating)](https://sonarcloud.io/dashboard?id=f0xdx_kafka-connect-wrap-smt)
 [![Security Rating](https://sonarcloud.io/api/project_badges/measure?project=f0xdx_kafka-connect-wrap-smt&metric=security_rating)](https://sonarcloud.io/dashboard?id=f0xdx_kafka-connect-wrap-smt)
-![GitHub](https://img.shields.io/github/license/f0xdx/kafka-connect-wrap-smt)
+![GitHub](https://img.shields.io/github/license/f0xdx/kafka-connect-wrap-smt?style=social)
 
 # kafka-connect-wrap-smt
 
@@ -39,11 +39,9 @@ After installing the plugin, you can configure the SMT as usual with
 
 ```json
 {
-  ...
   "transforms": "wrap",
   "transforms.wrap.type": "Wrap",
-  "transforms.wrap.include.headers": false,
-  ...
+  "transforms.wrap.include.headers": false
 }
 ```
 
