@@ -3,6 +3,7 @@ version = "1.0-SNAPSHOT"
 
 plugins {
   java
+  id("com.diffplug.gradle.spotless") version "3.28.0"
 }
 
 java {
@@ -46,4 +47,14 @@ configure<JavaPluginConvention> {
 
 tasks.test {
   useJUnitPlatform()
+}
+
+spotless {
+  java {
+    googleJavaFormat()
+    licenseHeaderFile(file("$rootDir/spotless/apache-license-2.0.java.comment"))
+    trimTrailingWhitespace()
+    endWithNewline()
+  }
+  encoding("UTF-8")
 }

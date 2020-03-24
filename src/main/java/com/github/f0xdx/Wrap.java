@@ -1,3 +1,18 @@
+/*
+ * Copyright 2020 the kafka-connect-wrap-smt authors
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package com.github.f0xdx;
 
 import static com.github.f0xdx.Schemas.schemaOf;
@@ -32,8 +47,9 @@ import org.apache.kafka.connect.transforms.util.SimpleConfig;
  * contrast to other SMTs, this SMT does not offer a dedicated key and value version. It rather
  * groups key and value into a single structured wrapper, leaving the original key unchanged.
  *
- * Note that this SMT only applies to sink connectors, i.e., connectors that export data from kafka.
- * If used with source connectors, the current implementation will raise a {@link DataException}.
+ * <p>Note that this SMT only applies to sink connectors, i.e., connectors that export data from
+ * kafka. If used with source connectors, the current implementation will raise a {@link
+ * DataException}.
  *
  * @param <R> Type extending {@link ConnectRecord}
  */
@@ -42,16 +58,17 @@ public class Wrap<R extends ConnectRecord<R>> implements Transformation<R> {
 
   @SuppressWarnings("unused")
   public static final String OVERVIEW_DOC = "Wraps key, record and metadata into a new record";
+
   public static final String INCLUDE_HEADERS_CONFIG = "include.headers";
 
-  public static final ConfigDef CONFIG_DEF = (new ConfigDef())
-      .define(
-          INCLUDE_HEADERS_CONFIG,
-          ConfigDef.Type.BOOLEAN,
-          false,
-          ConfigDef.Importance.MEDIUM,
-          "flag to toggle inclusion of kafka headers"
-      );
+  public static final ConfigDef CONFIG_DEF =
+      (new ConfigDef())
+          .define(
+              INCLUDE_HEADERS_CONFIG,
+              ConfigDef.Type.BOOLEAN,
+              false,
+              ConfigDef.Importance.MEDIUM,
+              "flag to toggle inclusion of kafka headers");
 
   private static final String PURPOSE = "wrapping key, value and metadata into record";
   private static final String TOPIC = "topic";
@@ -69,24 +86,25 @@ public class Wrap<R extends ConnectRecord<R>> implements Transformation<R> {
   /**
    * Retrieve a {@link Schema} from the cache, update cache on cache miss.
    *
-   * @param record  the current record of type {@link R}
-   * @return        the {@link Schema} for wrapped records
+   * @param record the current record of type {@link R}
+   * @return the {@link Schema} for wrapped records
    */
   synchronized Schema getSchema(@NonNull R record) {
     val keyValueSchema = schemaOf(record);
     var schema = schemaUpdateCache.get(keyValueSchema);
 
     if (schema == null) { // cache miss
-      schema = SchemaBuilder.struct()
-          .field(TOPIC, Schema.STRING_SCHEMA)
-          .field(PARTITION, Schema.INT32_SCHEMA)
-          .field(OFFSET, Schema.INT64_SCHEMA)
-          .field(TIMESTAMP, Schema.INT64_SCHEMA)
-          .field(TIMESTAMP_TYPE, Schema.STRING_SCHEMA)
-          .field(KEY, toBuilder(record.keySchema()).optional().build())
-          .field(VALUE, toBuilder(record.valueSchema()).optional().build())
-          .field(HEADERS, SchemaBuilder.array(Schema.STRING_SCHEMA).optional().build())
-          .build();
+      schema =
+          SchemaBuilder.struct()
+              .field(TOPIC, Schema.STRING_SCHEMA)
+              .field(PARTITION, Schema.INT32_SCHEMA)
+              .field(OFFSET, Schema.INT64_SCHEMA)
+              .field(TIMESTAMP, Schema.INT64_SCHEMA)
+              .field(TIMESTAMP_TYPE, Schema.STRING_SCHEMA)
+              .field(KEY, toBuilder(record.keySchema()).optional().build())
+              .field(VALUE, toBuilder(record.valueSchema()).optional().build())
+              .field(HEADERS, SchemaBuilder.array(Schema.STRING_SCHEMA).optional().build())
+              .build();
       schemaUpdateCache.put(keyValueSchema, schema);
     }
 
@@ -96,8 +114,8 @@ public class Wrap<R extends ConnectRecord<R>> implements Transformation<R> {
   /**
    * Handle processing for schema-less {@link R}s.
    *
-   * @param record  the current record of type {@link R}
-   * @return        a new record of type {@link R} that wraps Key / Value and Meta-data
+   * @param record the current record of type {@link R}
+   * @return a new record of type {@link R} that wraps Key / Value and Meta-data
    */
   R applyWithoutSchema(@NonNull R record) {
 
@@ -122,34 +140,24 @@ public class Wrap<R extends ConnectRecord<R>> implements Transformation<R> {
   /**
    * Handle processing for schema-less {@link R}s.
    *
-   * @param record  the current record of type {@link R}
-   * @return        a new record of type {@link R} that wraps Key / Value and Meta-data
+   * @param record the current record of type {@link R}
+   * @return a new record of type {@link R} that wraps Key / Value and Meta-data
    */
   R applyWithSchema(@NonNull R record) {
     val sinkRecord = requireSinkRecord(record, PURPOSE);
     val schema = getSchema(record);
-    val result = new Struct(schema)
-        .put(TOPIC, sinkRecord.topic())
-        .put(PARTITION, sinkRecord.kafkaPartition())
-        .put(OFFSET, sinkRecord.kafkaOffset())
-        .put(TIMESTAMP, sinkRecord.timestamp())
-        .put(TIMESTAMP_TYPE, sinkRecord.timestampType().name)
-        .put(
-            KEY,
-            project(
-                sinkRecord.keySchema(),
-                sinkRecord.key(),
-                schema.field(KEY).schema()
-            )
-        )
-        .put(
-            VALUE,
-            project(
-                sinkRecord.valueSchema(),
-                sinkRecord.value(),
-                schema.field(VALUE).schema()
-            )
-        );
+    val result =
+        new Struct(schema)
+            .put(TOPIC, sinkRecord.topic())
+            .put(PARTITION, sinkRecord.kafkaPartition())
+            .put(OFFSET, sinkRecord.kafkaOffset())
+            .put(TIMESTAMP, sinkRecord.timestamp())
+            .put(TIMESTAMP_TYPE, sinkRecord.timestampType().name)
+            .put(KEY, project(sinkRecord.keySchema(), sinkRecord.key(), schema.field(KEY).schema()))
+            .put(
+                VALUE,
+                project(
+                    sinkRecord.valueSchema(), sinkRecord.value(), schema.field(VALUE).schema()));
 
     if (includeHeaders) {
       result.put(HEADERS, sinkRecord.headers());
@@ -161,8 +169,8 @@ public class Wrap<R extends ConnectRecord<R>> implements Transformation<R> {
   /**
    * Process the current record of type {@link R}. Method specified in {@link Transformation}.
    *
-   * @param record  the current record of type {@link R}
-   * @return        a new record of type {@link R} that wraps Key / Value and Meta-data
+   * @param record the current record of type {@link R}
+   * @return a new record of type {@link R} that wraps Key / Value and Meta-data
    */
   @Override
   public R apply(R record) {
@@ -179,16 +187,14 @@ public class Wrap<R extends ConnectRecord<R>> implements Transformation<R> {
   /**
    * Provides configuration information. Method specified in {@link Transformation}.
    *
-   * @return  the {@link ConfigDef} of this SMT
+   * @return the {@link ConfigDef} of this SMT
    */
   @Override
   public ConfigDef config() {
     return CONFIG_DEF;
   }
 
-  /**
-   * Close the processing and clear the cache. Method specified in {@link Transformation}.
-   */
+  /** Close the processing and clear the cache. Method specified in {@link Transformation}. */
   @Override
   public void close() {
     schemaUpdateCache = null;
@@ -210,17 +216,14 @@ public class Wrap<R extends ConnectRecord<R>> implements Transformation<R> {
   /**
    * Static factory method for new records of type {@link R}.
    *
-   * @param record  the current record of  type {@link R}
-   * @param schema  the schema for the new record, or <code>null</code>
-   * @param value   the value {@link Object} for the new record
-   * @param <R>     the type {@link R} for the new record
-   * @return        the new record of type {@link R}
+   * @param record the current record of type {@link R}
+   * @param schema the schema for the new record, or <code>null</code>
+   * @param value the value {@link Object} for the new record
+   * @param <R> the type {@link R} for the new record
+   * @return the new record of type {@link R}
    */
   static <R extends ConnectRecord<R>> R newRecord(
-      @NonNull R record,
-      Schema schema,
-      @NonNull Object value
-  ) {
+      @NonNull R record, Schema schema, @NonNull Object value) {
     return record.newRecord(
         record.topic(),
         record.kafkaPartition(),
@@ -228,7 +231,6 @@ public class Wrap<R extends ConnectRecord<R>> implements Transformation<R> {
         record.key(),
         schema,
         value,
-        record.timestamp()
-    );
+        record.timestamp());
   }
 }

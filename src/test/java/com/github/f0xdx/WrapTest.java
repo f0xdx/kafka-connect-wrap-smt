@@ -1,3 +1,18 @@
+/*
+ * Copyright 2020 the kafka-connect-wrap-smt authors
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package com.github.f0xdx;
 
 import static com.github.f0xdx.Schemas.toBuilder;
@@ -46,32 +61,14 @@ class WrapTest {
 
     assertThrows(
         DataException.class,
-        () -> transform.apply(
-            new SourceRecord(
-                null,
-                null,
-                "topic",
-                STRING_SCHEMA,
-                "source"
-            )
-        )
-    );
+        () -> transform.apply(new SourceRecord(null, null, "topic", STRING_SCHEMA, "source")));
   }
 
   @DisplayName("apply w/o schema (null key)")
   @Test
   void applyNullKeyWithoutSchema() {
-    val res = transform.applyWithoutSchema(
-        new SinkRecord(
-            "topic",
-            0,
-            null,
-            null,
-            null,
-            "value",
-            1
-        )
-    );
+    val res =
+        transform.applyWithoutSchema(new SinkRecord("topic", 0, null, null, null, "value", 1));
 
     assertAll(
         "transformed record",
@@ -79,8 +76,7 @@ class WrapTest {
         () -> assertNull(res.valueSchema()),
         () -> assertNull(res.key()),
         () -> assertNotNull(res.value()),
-        () -> assertTrue(res.value() instanceof Map)
-    );
+        () -> assertTrue(res.value() instanceof Map));
 
     @SuppressWarnings("unchecked")
     val value = (Map<String, Object>) res.value();
@@ -94,24 +90,13 @@ class WrapTest {
         () -> assertTrue(value.containsKey("offset")),
         () -> assertEquals(1L, value.get("offset")),
         () -> assertTrue(value.containsKey("value")),
-        () -> assertEquals("value", value.get("value"))
-    );
+        () -> assertEquals("value", value.get("value")));
   }
 
   @DisplayName("apply w/o schema")
   @Test
   void applyWithoutSchema() {
-    val res = transform.applyWithoutSchema(
-        new SinkRecord(
-            "topic",
-            0,
-            null,
-            "key",
-            null,
-            42,
-            1
-        )
-    );
+    val res = transform.applyWithoutSchema(new SinkRecord("topic", 0, null, "key", null, 42, 1));
 
     assertAll(
         "transformed record",
@@ -120,8 +105,7 @@ class WrapTest {
         () -> assertNotNull(res.key()),
         () -> assertEquals("key", res.key()),
         () -> assertNotNull(res.value()),
-        () -> assertTrue(res.value() instanceof Map)
-    );
+        () -> assertTrue(res.value() instanceof Map));
 
     @SuppressWarnings("unchecked")
     val value = (Map<String, Object>) res.value();
@@ -137,26 +121,16 @@ class WrapTest {
         () -> assertTrue(value.containsKey("key")),
         () -> assertEquals("key", value.get("key")),
         () -> assertTrue(value.containsKey("value")),
-        () -> assertEquals(42, value.get("value"))
-    );
+        () -> assertEquals(42, value.get("value")));
   }
 
   @DisplayName("apply w/ schema (null key)")
   @Test
   void applyNullKeyWithSchema() {
-    val res = transform.applyWithSchema(
-        new SinkRecord(
-            "topic",
-            0,
-            STRING_SCHEMA,
-            null,
-            STRING_SCHEMA,
-            "value",
-            1,
-            0L,
-            CREATE_TIME
-        )
-    );
+    val res =
+        transform.applyWithSchema(
+            new SinkRecord(
+                "topic", 0, STRING_SCHEMA, null, STRING_SCHEMA, "value", 1, 0L, CREATE_TIME));
 
     assertAll(
         "transformed record",
@@ -166,8 +140,7 @@ class WrapTest {
         () -> assertNotNull(res.valueSchema()),
         () -> assertNull(res.key()),
         () -> assertNotNull(res.value()),
-        () -> assertTrue(res.value() instanceof Struct)
-    );
+        () -> assertTrue(res.value() instanceof Struct));
 
     val value = Requirements.requireStruct(res.value(), "testing");
 
@@ -176,33 +149,27 @@ class WrapTest {
         () -> assertEquals("topic", value.getString("topic")),
         () -> assertEquals(0, value.getInt32("partition")),
         () -> assertEquals(1L, value.getInt64("offset")),
-        () -> assertEquals("value", value.getString("value"))
-    );
+        () -> assertEquals("value", value.getString("value")));
   }
 
   @DisplayName("apply w/ schema")
   @Test
   void applyWithSchema() {
-    val valueSchema = SchemaBuilder.struct()
-        .field("first", STRING_SCHEMA)
-        .field("second", INT32_SCHEMA)
-        .build();
+    val valueSchema =
+        SchemaBuilder.struct().field("first", STRING_SCHEMA).field("second", INT32_SCHEMA).build();
 
-    val res = transform.applyWithSchema(
-        new SinkRecord(
-            "topic",
-            0,
-            STRING_SCHEMA,
-            "key",
-            valueSchema,
-            new Struct(valueSchema)
-                .put("first", "first")
-                .put("second", 2),
-            1,
-            0L,
-            CREATE_TIME
-        )
-    );
+    val res =
+        transform.applyWithSchema(
+            new SinkRecord(
+                "topic",
+                0,
+                STRING_SCHEMA,
+                "key",
+                valueSchema,
+                new Struct(valueSchema).put("first", "first").put("second", 2),
+                1,
+                0L,
+                CREATE_TIME));
 
     assertAll(
         "transformed record",
@@ -213,8 +180,7 @@ class WrapTest {
         () -> assertNotNull(res.valueSchema()),
         () -> assertSame(STRUCT, res.valueSchema().type()),
         () -> assertNotNull(res.value()),
-        () -> assertTrue(res.value() instanceof Struct)
-    );
+        () -> assertTrue(res.value() instanceof Struct));
 
     val value = Requirements.requireStruct(res.value(), "testing");
 
@@ -224,39 +190,33 @@ class WrapTest {
         () -> assertEquals("topic", value.getString("topic")),
         () -> assertEquals(0, value.getInt32("partition")),
         () -> assertEquals(1L, value.getInt64("offset")),
-        () -> assertEquals(
-            new Struct(toBuilder(valueSchema).optional().build())
-                .put("first", "first")
-                .put("second", 2),
-            value.getStruct("value")
-        )
-    );
+        () ->
+            assertEquals(
+                new Struct(toBuilder(valueSchema).optional().build())
+                    .put("first", "first")
+                    .put("second", 2),
+                value.getStruct("value")));
   }
 
   @DisplayName("get schema from cache (miss)")
   @Test
   void getSchemaMiss() {
 
-    val valueSchema = SchemaBuilder.struct()
-        .field("first", STRING_SCHEMA)
-        .field("second", INT32_SCHEMA)
-        .build();
+    val valueSchema =
+        SchemaBuilder.struct().field("first", STRING_SCHEMA).field("second", INT32_SCHEMA).build();
 
-    val res = transform.getSchema(
-        new SinkRecord(
-            "topic",
-            0,
-            STRING_SCHEMA,
-            "key",
-            valueSchema,
-            new Struct(valueSchema)
-                .put("first", "first")
-                .put("second", 2),
-            1,
-            0L,
-            CREATE_TIME
-        )
-    );
+    val res =
+        transform.getSchema(
+            new SinkRecord(
+                "topic",
+                0,
+                STRING_SCHEMA,
+                "key",
+                valueSchema,
+                new Struct(valueSchema).put("first", "first").put("second", 2),
+                1,
+                0L,
+                CREATE_TIME));
 
     assertAll(
         "obtained schema",
@@ -269,57 +229,42 @@ class WrapTest {
         () -> assertNotNull(res.field("key")),
         () -> assertNotNull(res.field("value")),
         () -> assertNotNull(res.field("headers")),
-        () -> assertEquals(
-            SchemaBuilder.string().optional().build(),
-            res.field("key").schema()
-        ),
-        () -> assertEquals(
-            toBuilder(valueSchema).optional().build(),
-            res.field("value").schema()
-        )
-    );
+        () -> assertEquals(SchemaBuilder.string().optional().build(), res.field("key").schema()),
+        () -> assertEquals(toBuilder(valueSchema).optional().build(), res.field("value").schema()));
   }
 
   @DisplayName("get schema from cache (hit)")
   @Test
   void getSchemaHit() {
 
-    val valueSchema = SchemaBuilder.struct()
-        .field("first", STRING_SCHEMA)
-        .field("second", INT32_SCHEMA)
-        .build();
+    val valueSchema =
+        SchemaBuilder.struct().field("first", STRING_SCHEMA).field("second", INT32_SCHEMA).build();
 
-    val res = transform.getSchema(
-        new SinkRecord(
-            "topic",
-            0,
-            STRING_SCHEMA,
-            "key",
-            valueSchema,
-            new Struct(valueSchema)
-                .put("first", "first")
-                .put("second", 2),
-            1,
-            0L,
-            CREATE_TIME
-        )
-    );
+    val res =
+        transform.getSchema(
+            new SinkRecord(
+                "topic",
+                0,
+                STRING_SCHEMA,
+                "key",
+                valueSchema,
+                new Struct(valueSchema).put("first", "first").put("second", 2),
+                1,
+                0L,
+                CREATE_TIME));
 
-    val res2 = transform.getSchema(
-        new SinkRecord(
-            "topic",
-            0,
-            STRING_SCHEMA,
-            "key_alt",
-            valueSchema,
-            new Struct(valueSchema)
-                .put("first", "first_alt")
-                .put("second", 3),
-            2,
-            1L,
-            CREATE_TIME
-        )
-    );
+    val res2 =
+        transform.getSchema(
+            new SinkRecord(
+                "topic",
+                0,
+                STRING_SCHEMA,
+                "key_alt",
+                valueSchema,
+                new Struct(valueSchema).put("first", "first_alt").put("second", 3),
+                2,
+                1L,
+                CREATE_TIME));
 
     assertAll(
         "obtained schema",
@@ -332,39 +277,18 @@ class WrapTest {
         () -> assertNotNull(res.field("key")),
         () -> assertNotNull(res.field("value")),
         () -> assertNotNull(res.field("headers")),
-        () -> assertEquals(
-            SchemaBuilder.string().optional().build(),
-            res.field("key").schema()
-        ),
-        () -> assertEquals(
-            toBuilder(valueSchema).optional().build(),
-            res.field("value").schema()
-        )
-    );
+        () -> assertEquals(SchemaBuilder.string().optional().build(), res.field("key").schema()),
+        () -> assertEquals(toBuilder(valueSchema).optional().build(), res.field("value").schema()));
 
-    assertAll(
-        "obtained schema (on hit)",
-        () -> assertNotNull(res2),
-        () -> assertSame(res, res2)
-    );
+    assertAll("obtained schema (on hit)", () -> assertNotNull(res2), () -> assertSame(res, res2));
   }
 
   @DisplayName("apply with value schema only")
   @Test
   void applyOnlyValueSchema() {
-    val res = transform.apply(
-        new SinkRecord(
-            "topic",
-            0,
-            null,
-            null,
-            STRING_SCHEMA,
-            "value",
-            1,
-            0L,
-            CREATE_TIME
-        )
-    );
+    val res =
+        transform.apply(
+            new SinkRecord("topic", 0, null, null, STRING_SCHEMA, "value", 1, 0L, CREATE_TIME));
 
     assertAll(
         "transformed record",
@@ -372,8 +296,7 @@ class WrapTest {
         () -> assertNull(res.valueSchema()),
         () -> assertNull(res.key()),
         () -> assertNotNull(res.value()),
-        () -> assertTrue(res.value() instanceof Map)
-    );
+        () -> assertTrue(res.value() instanceof Map));
 
     val value = Requirements.requireMap(res.value(), "testing");
 
@@ -382,33 +305,27 @@ class WrapTest {
         () -> assertEquals("topic", value.get("topic")),
         () -> assertEquals(0, value.get("partition")),
         () -> assertEquals(1L, value.get("offset")),
-        () -> assertEquals("value", value.get("value"))
-    );
+        () -> assertEquals("value", value.get("value")));
   }
 
   @DisplayName("apply with key and value schemas")
   @Test
   void applyKeyAndValueSchemas() {
-    val valueSchema = SchemaBuilder.struct()
-      .field("first", STRING_SCHEMA)
-      .field("second", INT32_SCHEMA)
-      .build();
+    val valueSchema =
+        SchemaBuilder.struct().field("first", STRING_SCHEMA).field("second", INT32_SCHEMA).build();
 
-    val res = transform.apply(
-        new SinkRecord(
-            "topic",
-            0,
-            STRING_SCHEMA,
-            "key",
-            valueSchema,
-            new Struct(valueSchema)
-                .put("first", "first")
-                .put("second", 2),
-            1,
-            0L,
-            CREATE_TIME
-        )
-    );
+    val res =
+        transform.apply(
+            new SinkRecord(
+                "topic",
+                0,
+                STRING_SCHEMA,
+                "key",
+                valueSchema,
+                new Struct(valueSchema).put("first", "first").put("second", 2),
+                1,
+                0L,
+                CREATE_TIME));
 
     assertAll(
         "transformed record",
@@ -419,8 +336,7 @@ class WrapTest {
         () -> assertNotNull(res.valueSchema()),
         () -> assertSame(STRUCT, res.valueSchema().type()),
         () -> assertNotNull(res.value()),
-        () -> assertTrue(res.value() instanceof Struct)
-    );
+        () -> assertTrue(res.value() instanceof Struct));
 
     val value = Requirements.requireStruct(res.value(), "testing");
 
@@ -430,36 +346,24 @@ class WrapTest {
         () -> assertEquals("topic", value.getString("topic")),
         () -> assertEquals(0, value.getInt32("partition")),
         () -> assertEquals(1L, value.getInt64("offset")),
-        () -> assertEquals(
-            new Struct(toBuilder(valueSchema).optional().build())
-                .put("first", "first")
-                .put("second", 2),
-            value.getStruct("value")
-        )
-    );
+        () ->
+            assertEquals(
+                new Struct(toBuilder(valueSchema).optional().build())
+                    .put("first", "first")
+                    .put("second", 2),
+                value.getStruct("value")));
   }
 
   @DisplayName("apply (tombstone)")
   @Test
   void applyTombstone() {
-    val valueSchema = SchemaBuilder.struct()
-        .field("first", STRING_SCHEMA)
-        .field("second", INT32_SCHEMA)
-        .build();
+    val valueSchema =
+        SchemaBuilder.struct().field("first", STRING_SCHEMA).field("second", INT32_SCHEMA).build();
 
-    val res = transform.apply(
-        new SinkRecord(
-            "topic",
-            0,
-            STRING_SCHEMA,
-            "key",
-            valueSchema,
-            null,
-            1,
-            0L,
-            CREATE_TIME
-        )
-    );
+    val res =
+        transform.apply(
+            new SinkRecord(
+                "topic", 0, STRING_SCHEMA, "key", valueSchema, null, 1, 0L, CREATE_TIME));
 
     assertAll(
         "transformed record",
@@ -470,8 +374,7 @@ class WrapTest {
         () -> assertNotNull(res.valueSchema()),
         () -> assertSame(STRUCT, res.valueSchema().type()),
         () -> assertNotNull(res.value()),
-        () -> assertTrue(res.value() instanceof Struct)
-    );
+        () -> assertTrue(res.value() instanceof Struct));
 
     val value = Requirements.requireStruct(res.value(), "testing");
 
@@ -481,8 +384,7 @@ class WrapTest {
         () -> assertEquals("topic", value.getString("topic")),
         () -> assertEquals(0, value.getInt32("partition")),
         () -> assertEquals(1L, value.getInt64("offset")),
-        () -> assertNull(value.getStruct("value"))
-    );
+        () -> assertNull(value.getStruct("value")));
   }
 
   @DisplayName("configuration description")
@@ -496,8 +398,7 @@ class WrapTest {
         () -> assertTrue(actual.configKeys().containsKey(INCLUDE_HEADERS_CONFIG)),
         () -> assertNotNull(actual.defaultValues()),
         () -> assertTrue(actual.defaultValues().containsKey(INCLUDE_HEADERS_CONFIG)),
-        () -> assertFalse((Boolean) actual.defaultValues().get(INCLUDE_HEADERS_CONFIG))
-    );
+        () -> assertFalse((Boolean) actual.defaultValues().get(INCLUDE_HEADERS_CONFIG)));
   }
 
   @DisplayName("configure w/o headers")
@@ -506,9 +407,7 @@ class WrapTest {
     assertAll(
         "configuration without headers",
         () -> assertFalse(transform.isIncludeHeaders()),
-        () -> assertNotNull(transform.getSchemaUpdateCache())
-    );
-
+        () -> assertNotNull(transform.getSchemaUpdateCache()));
   }
 
   @DisplayName("configure w/ headers")
@@ -520,7 +419,6 @@ class WrapTest {
     assertAll(
         "configuration with headers",
         () -> assertTrue(transform.isIncludeHeaders()),
-        () -> assertNotNull(transform.getSchemaUpdateCache())
-    );
+        () -> assertNotNull(transform.getSchemaUpdateCache()));
   }
 }
