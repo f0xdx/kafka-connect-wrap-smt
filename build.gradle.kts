@@ -3,7 +3,9 @@ version = "0.1-SNAPSHOT"
 
 plugins {
   java
+  jacoco
   id("com.diffplug.gradle.spotless") version "3.28.0"
+  id("org.sonarqube") version "2.8"
 }
 
 java {
@@ -51,6 +53,13 @@ tasks.test {
   useJUnitPlatform()
 }
 
+tasks.jacocoTestReport {
+  reports {
+    xml.isEnabled = true
+    csv.isEnabled = false
+  }
+}
+
 spotless {
   java {
     googleJavaFormat()
@@ -59,4 +68,13 @@ spotless {
     endWithNewline()
   }
   encoding("UTF-8")
+}
+
+sonarqube {
+  properties {
+    property("sonar.projectKey", "f0xdx_kafka-connect-wrap-smt")
+    property("sonar.organization", "f0xdx")
+    property("sonar.host.url", "https://sonarcloud.io")
+    property("sonar.login", System.getenv("SONAR_TOKEN"))
+  }
 }

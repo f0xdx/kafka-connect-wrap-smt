@@ -1,3 +1,8 @@
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=f0xdx_kafka-connect-wrap-smt&metric=alert_status)](https://sonarcloud.io/dashboard?id=f0xdx_kafka-connect-wrap-smt)
+[![Coverage](https://sonarcloud.io/api/project_badges/measure?project=f0xdx_kafka-connect-wrap-smt&metric=coverage)](https://sonarcloud.io/dashboard?id=f0xdx_kafka-connect-wrap-smt)
+[![Reliability Rating](https://sonarcloud.io/api/project_badges/measure?project=f0xdx_kafka-connect-wrap-smt&metric=reliability_rating)](https://sonarcloud.io/dashboard?id=f0xdx_kafka-connect-wrap-smt)
+[![Security Rating](https://sonarcloud.io/api/project_badges/measure?project=f0xdx_kafka-connect-wrap-smt&metric=security_rating)](https://sonarcloud.io/dashboard?id=f0xdx_kafka-connect-wrap-smt)
+
 # kafka-connect-wrap-smt
 
 The *kafka-connect-wrap-smt* is a single message transform (SMT) that wraps key and record of kafka
