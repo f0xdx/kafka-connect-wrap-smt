@@ -1,5 +1,5 @@
 group = "com.github.f0xdx"
-version = "1.0-SNAPSHOT"
+version = "0.1-SNAPSHOT"
 
 plugins {
   java
@@ -9,6 +9,8 @@ plugins {
 java {
   sourceCompatibility = JavaVersion.VERSION_1_8
   targetCompatibility = JavaVersion.VERSION_1_8
+  withSourcesJar()
+  withJavadocJar()
 }
 
 repositories {
