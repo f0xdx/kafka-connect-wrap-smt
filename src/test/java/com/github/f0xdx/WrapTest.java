@@ -16,7 +16,15 @@
 package com.github.f0xdx;
 
 import static com.github.f0xdx.Schemas.toBuilder;
+import static com.github.f0xdx.Wrap.HEADERS;
 import static com.github.f0xdx.Wrap.INCLUDE_HEADERS_CONFIG;
+import static com.github.f0xdx.Wrap.KEY;
+import static com.github.f0xdx.Wrap.OFFSET;
+import static com.github.f0xdx.Wrap.PARTITION;
+import static com.github.f0xdx.Wrap.TIMESTAMP;
+import static com.github.f0xdx.Wrap.TIMESTAMP_TYPE;
+import static com.github.f0xdx.Wrap.TOPIC;
+import static com.github.f0xdx.Wrap.VALUE;
 import static org.apache.kafka.common.record.TimestampType.CREATE_TIME;
 import static org.apache.kafka.connect.data.Schema.INT32_SCHEMA;
 import static org.apache.kafka.connect.data.Schema.STRING_SCHEMA;
@@ -221,16 +229,42 @@ class WrapTest {
     assertAll(
         "obtained schema",
         () -> assertNotNull(res),
-        () -> assertNotNull(res.field("topic")),
-        () -> assertNotNull(res.field("partition")),
-        () -> assertNotNull(res.field("offset")),
-        () -> assertNotNull(res.field("timestamp")),
-        () -> assertNotNull(res.field("timestamp.type")),
-        () -> assertNotNull(res.field("key")),
-        () -> assertNotNull(res.field("value")),
-        () -> assertNotNull(res.field("headers")),
-        () -> assertEquals(SchemaBuilder.string().optional().build(), res.field("key").schema()),
-        () -> assertEquals(toBuilder(valueSchema).optional().build(), res.field("value").schema()));
+        () -> assertNotNull(res.field(TOPIC)),
+        () -> assertNotNull(res.field(PARTITION)),
+        () -> assertNotNull(res.field(OFFSET)),
+        () -> assertNotNull(res.field(TIMESTAMP)),
+        () -> assertNotNull(res.field(TIMESTAMP_TYPE)),
+        () -> assertNotNull(res.field(KEY)),
+        () -> assertNotNull(res.field(VALUE)),
+        () -> assertNotNull(res.field(HEADERS)),
+        () -> assertEquals(SchemaBuilder.string().optional().build(), res.field(KEY).schema()),
+        () -> assertEquals(toBuilder(valueSchema).optional().build(), res.field(VALUE).schema()));
+  }
+
+  @DisplayName("create schema w/ valid field names")
+  @Test
+  void createSchemaValidFieldNames() {
+
+    val valueSchema =
+        SchemaBuilder.struct().field("first", STRING_SCHEMA).field("second", INT32_SCHEMA).build();
+
+    val res =
+        transform.getSchema(
+            new SinkRecord(
+                "topic",
+                0,
+                STRING_SCHEMA,
+                "key",
+                valueSchema,
+                new Struct(valueSchema).put("first", "first").put("second", 2),
+                1,
+                0L,
+                CREATE_TIME));
+
+    assertAll(
+        "obtained schema",
+        () -> assertNotNull(res),
+        () -> res.fields().forEach(field -> assertFalse(field.name().contains("."))));
   }
 
   @DisplayName("get schema from cache (hit)")
@@ -269,16 +303,16 @@ class WrapTest {
     assertAll(
         "obtained schema",
         () -> assertNotNull(res),
-        () -> assertNotNull(res.field("topic")),
-        () -> assertNotNull(res.field("partition")),
-        () -> assertNotNull(res.field("offset")),
-        () -> assertNotNull(res.field("timestamp")),
-        () -> assertNotNull(res.field("timestamp.type")),
-        () -> assertNotNull(res.field("key")),
-        () -> assertNotNull(res.field("value")),
-        () -> assertNotNull(res.field("headers")),
-        () -> assertEquals(SchemaBuilder.string().optional().build(), res.field("key").schema()),
-        () -> assertEquals(toBuilder(valueSchema).optional().build(), res.field("value").schema()));
+        () -> assertNotNull(res.field(TOPIC)),
+        () -> assertNotNull(res.field(PARTITION)),
+        () -> assertNotNull(res.field(OFFSET)),
+        () -> assertNotNull(res.field(TIMESTAMP)),
+        () -> assertNotNull(res.field(TIMESTAMP_TYPE)),
+        () -> assertNotNull(res.field(KEY)),
+        () -> assertNotNull(res.field(VALUE)),
+        () -> assertNotNull(res.field(HEADERS)),
+        () -> assertEquals(SchemaBuilder.string().optional().build(), res.field(KEY).schema()),
+        () -> assertEquals(toBuilder(valueSchema).optional().build(), res.field(VALUE).schema()));
 
     assertAll("obtained schema (on hit)", () -> assertNotNull(res2), () -> assertSame(res, res2));
   }
@@ -312,7 +346,11 @@ class WrapTest {
   @Test
   void applyKeyAndValueSchemas() {
     val valueSchema =
-        SchemaBuilder.struct().field("first", STRING_SCHEMA).field("second", INT32_SCHEMA).build();
+        SchemaBuilder.struct()
+            .name("value.schema")
+            .field("first", STRING_SCHEMA)
+            .field("second", INT32_SCHEMA)
+            .build();
 
     val res =
         transform.apply(
@@ -358,7 +396,11 @@ class WrapTest {
   @Test
   void applyTombstone() {
     val valueSchema =
-        SchemaBuilder.struct().field("first", STRING_SCHEMA).field("second", INT32_SCHEMA).build();
+        SchemaBuilder.struct()
+            .name("value.schema")
+            .field("first", STRING_SCHEMA)
+            .field("second", INT32_SCHEMA)
+            .build();
 
     val res =
         transform.apply(

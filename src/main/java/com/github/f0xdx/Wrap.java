@@ -70,15 +70,15 @@ public class Wrap<R extends ConnectRecord<R>> implements Transformation<R> {
               ConfigDef.Importance.MEDIUM,
               "flag to toggle inclusion of kafka headers");
 
-  private static final String PURPOSE = "wrapping key, value and metadata into record";
-  private static final String TOPIC = "topic";
-  private static final String PARTITION = "partition";
-  private static final String OFFSET = "offset";
-  private static final String TIMESTAMP = "timestamp";
-  private static final String TIMESTAMP_TYPE = "timestamp.type";
-  private static final String KEY = "key";
-  private static final String VALUE = "value";
-  private static final String HEADERS = "headers";
+  static final String PURPOSE = "wrapping key, value and metadata into record";
+  static final String TOPIC = "topic";
+  static final String PARTITION = "partition";
+  static final String OFFSET = "offset";
+  static final String TIMESTAMP = "timestamp";
+  static final String TIMESTAMP_TYPE = "timestamp_type";
+  static final String KEY = "key";
+  static final String VALUE = "value";
+  static final String HEADERS = "headers";
 
   private volatile boolean includeHeaders;
   private Cache<KeyValueSchema, Schema> schemaUpdateCache;

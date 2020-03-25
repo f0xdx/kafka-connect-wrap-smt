@@ -1,0 +1,42 @@
+name: CI
+
+
+# action triggers
+
+on: [push]
+
+
+# jobs
+
+jobs:
+
+  build:
+    name: Build (w/ Gradle)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: checkout repo
+        uses: actions/checkout@v2
+
+      - name: setup jdk (java 8)
+        uses: actions/setup-java@v1
+        with:
+          java-version: 8
+
+      - name: prepare gradle
+        run: chmod +x gradlew
+
+      - name: build (gradle)
+        run: ./gradlew build
+
+      - name: upload test reports (on error)
+        uses: actions/upload-artifact@v1
+        if: failure()
+        with:
+          name: test-reports
+          path: build/reports/tests/test
+
+      - name: sonarqube analysis
+        env:
+          SONAR_TOKEN: ${{ secrets.sonar_token }}
+        run: ./gradlew jacocoTestReport sonarqube -Dsonar.branch.name=${GITHUB_REF#refs/heads/}

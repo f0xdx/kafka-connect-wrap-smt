@@ -100,7 +100,7 @@ class SchemasTest {
   @DisplayName("to builder (array)")
   @Test
   void toBuilderArray() {
-    val schema = SchemaBuilder.array(STRING_SCHEMA).build();
+    val schema = SchemaBuilder.array(STRING_SCHEMA).name("an.array").build();
     val result = Schemas.toBuilder(schema);
     assertAll(
         "schema builder from array",
@@ -111,7 +111,7 @@ class SchemasTest {
   @DisplayName("to builder (map)")
   @Test
   void toBuilderMap() {
-    val schema = SchemaBuilder.map(STRING_SCHEMA, INT32_SCHEMA).build();
+    val schema = SchemaBuilder.map(STRING_SCHEMA, INT32_SCHEMA).name("a.map").build();
     val result = Schemas.toBuilder(schema);
     assertAll(
         "schema builder from map",
@@ -124,6 +124,7 @@ class SchemasTest {
   void toBuilderStruct() {
     val schema =
         SchemaBuilder.struct()
+            .name("a.struct")
             .field("one", STRING_SCHEMA)
             .field("two", SchemaBuilder.struct().field("three", INT32_SCHEMA).build())
             .build();
