@@ -32,4 +32,4 @@ jobs:
       - name: sonarqube analysis
         env:
           SONAR_TOKEN: ${{ secrets.sonar_token }}
-        run: ./gradlew jacocoTestReport sonarqube -Dsonar.branch.name=${GITHUB_REF}
+        run: ./gradlew jacocoTestReport sonarqube -Dsonar.branch.name=${GITHUB_REF#refs/heads}
