@@ -29,7 +29,14 @@ jobs:
       - name: build (gradle)
         run: ./gradlew build
 
+      - name: upload test reports (on error)
+        uses: actions/upload-artifact@v1
+        if: failure()
+        with:
+          name: test-reports
+          path: build/reports/tests/test
+
       - name: sonarqube analysis
         env:
           SONAR_TOKEN: ${{ secrets.sonar_token }}
-        run: ./gradlew jacocoTestReport sonarqube -Dsonar.branch.name=${GITHUB_REF#refs/heads}
+        run: ./gradlew jacocoTestReport sonarqube -Dsonar.branch.name=${GITHUB_REF#refs/heads/}
