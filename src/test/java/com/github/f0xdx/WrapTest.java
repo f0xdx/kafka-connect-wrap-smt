@@ -312,7 +312,11 @@ class WrapTest {
   @Test
   void applyKeyAndValueSchemas() {
     val valueSchema =
-        SchemaBuilder.struct().field("first", STRING_SCHEMA).field("second", INT32_SCHEMA).build();
+        SchemaBuilder.struct()
+            .name("value.schema")
+            .field("first", STRING_SCHEMA)
+            .field("second", INT32_SCHEMA)
+            .build();
 
     val res =
         transform.apply(
@@ -358,7 +362,11 @@ class WrapTest {
   @Test
   void applyTombstone() {
     val valueSchema =
-        SchemaBuilder.struct().field("first", STRING_SCHEMA).field("second", INT32_SCHEMA).build();
+        SchemaBuilder.struct()
+            .name("value.schema")
+            .field("first", STRING_SCHEMA)
+            .field("second", INT32_SCHEMA)
+            .build();
 
     val res =
         transform.apply(

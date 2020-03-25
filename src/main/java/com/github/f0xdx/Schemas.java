@@ -81,7 +81,7 @@ public class Schemas {
 
     // additional initialization (doc, default, optional)
     if (builder != null) {
-      builder = builder.version(schema.version()).doc(schema.doc());
+      builder = builder.name(schema.name()).version(schema.version()).doc(schema.doc());
 
       if (schema.defaultValue() != null) {
         builder = builder.defaultValue(schema.defaultValue());
