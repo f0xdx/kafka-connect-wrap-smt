@@ -1,12 +1,9 @@
-name: CI (Developoment)
+name: CI
+
 
 # action triggers
 
-on:
-  push:
-    branches-ignore:
-      - "master"
-      - "release*"
+on: [push]
 
 
 # jobs

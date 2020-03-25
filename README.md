@@ -1,3 +1,4 @@
+![CI](https://github.com/f0xdx/kafka-connect-wrap-smt/workflows/CI/badge.svg)
 [![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=f0xdx_kafka-connect-wrap-smt&metric=alert_status)](https://sonarcloud.io/dashboard?id=f0xdx_kafka-connect-wrap-smt)
 [![Coverage](https://sonarcloud.io/api/project_badges/measure?project=f0xdx_kafka-connect-wrap-smt&metric=coverage)](https://sonarcloud.io/dashboard?id=f0xdx_kafka-connect-wrap-smt)
 [![Reliability Rating](https://sonarcloud.io/api/project_badges/measure?project=f0xdx_kafka-connect-wrap-smt&metric=reliability_rating)](https://sonarcloud.io/dashboard?id=f0xdx_kafka-connect-wrap-smt)
