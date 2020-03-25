@@ -32,7 +32,14 @@ plugins folder of your kafka connect instance:
 cp build/libs/kafka-connect-wrap-smt-0.1-SNAPSHOT.jar connect/plugin/folder
 ```
 
-Make sure that the plugin folder is picked up by kafka connect by verifying its logs:
+Make sure that the plugin folder is picked up by kafka connect by verifying its logs. For instance,
+with `docker-compose`, you could run `docker-compose logs connect | grep Wrap` which should show
+relevant logs, e.g.,
+
+```shell script
+connect            | [2020-03-25 12:48:00,429] INFO Added plugin 'com.github.f0xdx.Wrap' (org.apache.kafka.connect.runtime.isolation.DelegatingClassLoader)
+connect            | [2020-03-25 12:48:01,463] INFO Added alias 'Wrap' to plugin 'com.github.f0xdx.Wrap' (org.apache.kafka.connect.runtime.isolation.DelegatingClassLoader)
+```
 
 ## Configuration
 
@@ -45,6 +52,9 @@ After installing the plugin, you can configure the SMT as usual with
   "transforms.wrap.include.headers": false
 }
 ```
+
+As stated above, this SMT can only be used in conjunction with sink connectors.
+
 
 ## Roadmap
 
