@@ -11,40 +11,40 @@ on: [push]
 jobs:
 
   build:
-    name: Build (w/ Gradle)
+    name: Build
     runs-on: ubuntu-latest
 
     steps:
-      - name: checkout repo
+      - name: Checkout repo
         uses: actions/checkout@v2
 
-      - name: setup jdk (java 8)
+      - name: Setup jdk (java 8)
         uses: actions/setup-java@v1
         with:
           java-version: 8
 
-      - name: prepare gradle
+      - name: Prepare gradle
         run: chmod +x gradlew
 
-      - name: build (gradle)
+      - name: Build (gradle)
         run: ./gradlew build
 
-      - name: upload test reports (on error)
+      - name: Upload test reports (on error)
         uses: actions/upload-artifact@v1
         if: failure()
         with:
           name: test-reports
           path: build/reports/tests/test
 
-      - name: sonarqube analysis
+      - name: Sonarqube analysis
         env:
           SONAR_TOKEN: ${{ secrets.sonar_token }}
         run: ./gradlew sonarqube -Dsonar.branch.name=${GITHUB_REF#refs/heads/}
 
-      - name: generate checksums
-        run: sha256sum build/libs/*.jar > checksums.sha256
+      - name: Generate checksums
+        run: sha256sum build/libs/*.jar > build/libs/checksums.sha256
 
-      - name: upload artifacts
+      - name: Upload build artifacts
         uses: actions/upload-artifact@v1
         with:
           name: build-${{ github.run_id }}
