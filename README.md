@@ -10,26 +10,20 @@
 The *kafka-connect-wrap-smt* is a [single message transform (SMT)](https://docs.confluent.io/current/connect/transforms/index.html)
 that wraps key and record of kafka messages into a single struct. This ensures, e.g., that data
 contained in complex keys is not lost when ingesting data from kafka in a sink such as
-elasticsearch. Additionally, it supports exporting meta-data such as partition, offset, timestamp,
-topic and kafka headers.
+elasticsearch. Additionally, it supports exporting meta-data including partition, offset, timestamp,
+topic name and kafka headers.
 
 Note that *kafka-connect-wrap-smt* does only support sink connectors, as it wraps kafka specific
 meta-data that is not available for all source connectors.
 
 ## Install
 
-Until we have a fully working github actions build, you can build this project locally using:
+To install the latest release, you can download the plugin binaries directly from github or build
+them from source (see section *Build* below):
 
 ```shell script
-git clone git@github.com:f0xdx/kafka-connect-wrap-smt.git
-./gradlew build
-```
-
-The you will have to deploy the `build/libs/kafka-connect-wrap-smt-0.1-SNAPSHOT.jar` into the
-plugins folder of your kafka connect instance:
-
-```shell script
-cp build/libs/kafka-connect-wrap-smt-0.1-SNAPSHOT.jar connect/plugin/folder
+curl -sLJO https://github.com/f0xdx/kafka-connect-wrap-smt/releases/download/v0.1.0/kafka-connect-wrap-smt-0.1.0.jar
+cp kafka-connect-wrap-smt-0.1-SNAPSHOT.jar connect/plugin/folder
 ```
 
 Make sure that the plugin folder is picked up by kafka connect by verifying its logs. For instance,
@@ -43,7 +37,7 @@ connect            | [2020-03-25 12:48:01,463] INFO Added alias 'Wrap' to plugin
 
 ## Configuration
 
-After installing the plugin, you can configure the SMT as usual with
+After installing the plugin, you can configure your connector to apply the SMT, e.g.:
 
 ```json
 {
@@ -55,6 +49,21 @@ After installing the plugin, you can configure the SMT as usual with
 
 As stated above, this SMT can only be used in conjunction with sink connectors.
 
+## Build
+
+To build this project locally simply run:
+
+```shell script
+git clone git@github.com:f0xdx/kafka-connect-wrap-smt.git
+./gradlew build
+```
+
+After building, you can deploy the `build/libs/kafka-connect-wrap-smt-0.1-SNAPSHOT.jar` into the
+plugins folder of your kafka connect instance, e.g.:
+
+```shell script
+cp build/libs/kafka-connect-wrap-smt-0.1-SNAPSHOT.jar connect/plugin/folder
+```
 
 ## Roadmap
 
