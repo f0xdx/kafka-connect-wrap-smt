@@ -1,6 +1,10 @@
 group = "com.github.f0xdx"
 version = "0.1-SNAPSHOT"
 
+val junitVersion by extra("5.6.1")
+val kafkaVersion by extra("2.3.1")
+val lombokVersion by extra("1.18.12")
+
 plugins {
   java
   jacoco
@@ -8,20 +12,9 @@ plugins {
   id("org.sonarqube") version "2.8"
 }
 
-java {
-  sourceCompatibility = JavaVersion.VERSION_1_8
-  targetCompatibility = JavaVersion.VERSION_1_8
-  withSourcesJar()
-  withJavadocJar()
-}
-
 repositories {
   mavenCentral()
 }
-
-val junitVersion by extra("5.6.1")
-val kafkaVersion by extra("2.3.1")
-val lombokVersion by extra("1.18.12")
 
 dependencies {
   // bom
@@ -58,6 +51,17 @@ tasks.jacocoTestReport {
     xml.isEnabled = true
     csv.isEnabled = false
   }
+}
+
+tasks.sonarqube {
+  dependsOn(tasks.jacocoTestReport)
+}
+
+java {
+  sourceCompatibility = JavaVersion.VERSION_1_8
+  targetCompatibility = JavaVersion.VERSION_1_8
+  withSourcesJar()
+  withJavadocJar()
 }
 
 spotless {
