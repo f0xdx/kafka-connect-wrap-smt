@@ -1,7 +1,7 @@
 group = "com.github.f0xdx"
 version = "0.1-SNAPSHOT"
 
-val junitVersion by extra("5.6.1")
+val junitVersion by extra("5.6.2")
 val kafkaVersion by extra("2.3.1")
 val lombokVersion by extra("1.18.12")
 
