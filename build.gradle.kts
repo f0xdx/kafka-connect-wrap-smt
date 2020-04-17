@@ -1,3 +1,5 @@
+import java.time.LocalDate
+
 group = "com.github.f0xdx"
 version = "0.1-SNAPSHOT"
 
@@ -80,5 +82,30 @@ sonarqube {
     property("sonar.organization", "f0xdx")
     property("sonar.host.url", "https://sonarcloud.io")
     property("sonar.login", System.getenv("SONAR_TOKEN"))
+  }
+}
+
+tasks.register<Zip>("confluent_hub_archive") {
+  destinationDirectory.set(file("${buildDir}/dist"))
+  archiveFileName.set("f0xdx-${rootProject.name}-${rootProject.version}.zip")
+
+  from("manifest.json") {
+    expand(
+        "name" to rootProject.name,
+        "version" to rootProject.version,
+        "build_date" to LocalDate.now()
+    )
+  }
+  from("README.md") {
+    into("doc")
+  }
+  from("LICENSE") {
+    into("doc")
+  }
+  from(tasks.javadoc) {
+    into("doc/javadoc")
+  }
+  from(tasks.jar) {
+    into("lib")
   }
 }
