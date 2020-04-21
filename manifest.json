@@ -4,7 +4,7 @@
   "release_date": "${build_date}",
   "component_types": ["transform"],
   "title": "Wrap Transformation",
-  "description": "Kafka Connect single message transform (SMT) wrapping key and record of kafka messages into a single struct. This ensures, e.g., that data contained in complex keys is not lost when ingesting data from kafka in a sink such as elasticsearch. Additionally, it supports exporting meta-data including partition, offset, timestamp, topic name and kafka headers.\n\nNote that this transform does only support sink connectors, as it wraps kafka specific meta-data that is not available for all source connectors.",
+  "description": "<p>Kafka Connect single message transform (SMT) wrapping key and record of kafka messages into a single struct. This ensures, e.g., that data contained in complex keys is not lost when ingesting data from kafka in a sink such as elasticsearch. Additionally, it supports exporting meta-data including partition, offset, timestamp, topic name and kafka headers.</p><p>Note that this transform does only support <b>sink connectors</b>, as it wraps kafka specific meta-data that is not available for all source connectors.</p>",
   "owner": {
     "username": "f0xdx",
     "name": "Felix Heinrichs",

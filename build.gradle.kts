@@ -1,7 +1,7 @@
 import java.time.LocalDate
 
 group = "com.github.f0xdx"
-version = "0.1-SNAPSHOT"
+version = "0.1.0"
 
 val junitVersion by extra("5.6.2")
 val kafkaVersion by extra("2.3.1")
@@ -108,4 +108,6 @@ tasks.register<Zip>("confluent_hub_archive") {
   from(tasks.jar) {
     into("lib")
   }
+
+  into("f0xdx-${rootProject.name}-${rootProject.version}")
 }
