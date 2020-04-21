@@ -47,10 +47,10 @@ jobs:
           cp build/libs/*.jar build/dist
 
       - name: Generate checksums
-        run: sha256sum build/dist/* > build/libs/checksums.sha256
+        run: sha256sum build/dist/* > build/dist/checksums.sha256
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v1
         with:
           name: build-${{ github.run_id }}
-          path: build/libs
+          path: build/dist
