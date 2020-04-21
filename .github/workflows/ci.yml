@@ -41,8 +41,13 @@ jobs:
           SONAR_TOKEN: ${{ secrets.sonar_token }}
         run: ./gradlew sonarqube -Dsonar.branch.name=${GITHUB_REF#refs/heads/}
 
+      - name: Package (Confluent Hub Archive)
+        run: |
+          ./gradlew confluent_hub_archive
+          cp build/libs/*.jar build/dist
+
       - name: Generate checksums
-        run: sha256sum build/libs/*.jar > build/libs/checksums.sha256
+        run: sha256sum build/dist/* > build/libs/checksums.sha256
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v1
