@@ -135,4 +135,23 @@ class SchemasTest {
         () -> assertNotNull(result),
         () -> assertEquals(schema, result.build()));
   }
+
+  @DisplayName("schema with parameters")
+  @Test
+  void schemaWithParameters() {
+    val schema =
+        SchemaBuilder.struct()
+            .name("d.struct")
+            .field("str", STRING_SCHEMA)
+            .parameter("connect.doc", "documentation here")
+            .build();
+
+    val result = Schemas.toBuilder(schema);
+    assertAll(
+        "schema builder with parameters",
+        () -> assertNotNull(result),
+        () -> assertEquals(schema.parameters().size(), result.build().parameters().size()),
+        () -> assertTrue(result.build().parameters().containsKey("connect.doc")),
+        () -> assertEquals("documentation here", result.build().parameters().get("connect.doc")));
+  }
 }
