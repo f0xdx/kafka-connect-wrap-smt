@@ -15,9 +15,13 @@
  */
 package com.github.f0xdx;
 
+import java.util.Collections;
+import java.util.Map;
+import java.util.Optional;
 import lombok.NonNull;
 import lombok.Value;
 import org.apache.kafka.connect.connector.ConnectRecord;
+import org.apache.kafka.connect.data.ConnectSchema;
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
@@ -82,6 +86,12 @@ public class Schemas {
     // additional initialization (doc, default, optional)
     if (builder != null) {
       builder = builder.name(schema.name()).version(schema.version()).doc(schema.doc());
+
+      if (schema instanceof ConnectSchema) {
+        ConnectSchema connectSchema = (ConnectSchema) schema;
+        Optional<Map<String, String>> params = Optional.ofNullable(connectSchema.parameters());
+        builder = builder.parameters(params.orElseGet(Collections::emptyMap));
+      }
 
       if (schema.defaultValue() != null) {
         builder = builder.defaultValue(schema.defaultValue());
