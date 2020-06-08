@@ -21,6 +21,7 @@ import static com.github.f0xdx.Wrap.INCLUDE_HEADERS_CONFIG;
 import static com.github.f0xdx.Wrap.KEY;
 import static com.github.f0xdx.Wrap.OFFSET;
 import static com.github.f0xdx.Wrap.PARTITION;
+import static com.github.f0xdx.Wrap.SCHEMA_VERSION_FROM_CONFIG;
 import static com.github.f0xdx.Wrap.TIMESTAMP;
 import static com.github.f0xdx.Wrap.TIMESTAMP_TYPE;
 import static com.github.f0xdx.Wrap.TOPIC;
@@ -454,7 +455,7 @@ class WrapTest {
 
   @DisplayName("configure w/ headers")
   @Test
-  void testConfigure() {
+  void testConfigureHeaders() {
     val transform = new Wrap<SinkRecord>();
     transform.configure(Collections.singletonMap(INCLUDE_HEADERS_CONFIG, true));
 
@@ -462,5 +463,47 @@ class WrapTest {
         "configuration with headers",
         () -> assertTrue(transform.isIncludeHeaders()),
         () -> assertNotNull(transform.getSchemaUpdateCache()));
+  }
+
+  @DisplayName("configure w/ schema version")
+  @Test
+  void testConfigureSchema() {
+    val transformValue = new Wrap<SinkRecord>();
+    transformValue.configure(Collections.singletonMap(SCHEMA_VERSION_FROM_CONFIG, "VALUE"));
+
+    assertNotNull(transformValue.getSchemaVersionFrom());
+
+    val transformKey = new Wrap<SinkRecord>();
+    transformKey.configure(Collections.singletonMap(SCHEMA_VERSION_FROM_CONFIG, "KEY"));
+
+    assertNotNull(transformKey.getSchemaVersionFrom());
+  }
+
+  @DisplayName("lift schema version")
+  @Test
+  void liftSchemaVersion() {
+    val valueSchema = SchemaBuilder.string().name("bar").version(1).build();
+
+    val record =
+        new SinkRecord(
+            "topic",
+            0,
+            STRING_SCHEMA,
+            "key",
+            valueSchema,
+            "foo",
+            0,
+            System.currentTimeMillis(),
+            CREATE_TIME);
+
+    val transformValue = new Wrap<SinkRecord>();
+    transformValue.configure(Collections.singletonMap(SCHEMA_VERSION_FROM_CONFIG, "VALUE"));
+
+    SinkRecord result = transformValue.apply(record);
+
+    assertAll(
+        "schema version is lifted from the value",
+        () -> assertNotNull(result),
+        () -> assertEquals(1, result.valueSchema().version()));
   }
 }
