@@ -60,6 +60,7 @@ public class Wrap<R extends ConnectRecord<R>> implements Transformation<R> {
   public static final String OVERVIEW_DOC = "Wraps key, record and metadata into a new record";
 
   public static final String INCLUDE_HEADERS_CONFIG = "include.headers";
+  public static final String SCHEMA_VERSION_FROM_CONFIG = "schema.version.from";
 
   public static final ConfigDef CONFIG_DEF =
       (new ConfigDef())
@@ -68,7 +69,13 @@ public class Wrap<R extends ConnectRecord<R>> implements Transformation<R> {
               ConfigDef.Type.BOOLEAN,
               false,
               ConfigDef.Importance.MEDIUM,
-              "flag to toggle inclusion of kafka headers");
+              "flag to toggle inclusion of kafka headers")
+          .define(
+              SCHEMA_VERSION_FROM_CONFIG,
+              ConfigDef.Type.STRING,
+              null,
+              ConfigDef.Importance.LOW,
+              "flag to toggle inclusion of schema version from the record's key (use \"KEY\") or the record's value (use \"VALUE\")");
 
   static final String PURPOSE = "wrapping key, value and metadata into record";
   static final String TOPIC = "topic";
@@ -81,6 +88,7 @@ public class Wrap<R extends ConnectRecord<R>> implements Transformation<R> {
   static final String HEADERS = "headers";
 
   private volatile boolean includeHeaders;
+  private volatile SchemaFrom schemaVersionFrom;
   private Cache<KeyValueSchema, Schema> schemaUpdateCache;
 
   /**
@@ -94,7 +102,7 @@ public class Wrap<R extends ConnectRecord<R>> implements Transformation<R> {
     var schema = schemaUpdateCache.get(keyValueSchema);
 
     if (schema == null) { // cache miss
-      schema =
+      SchemaBuilder schemaBuilder =
           SchemaBuilder.struct()
               .field(TOPIC, Schema.STRING_SCHEMA)
               .field(PARTITION, Schema.INT32_SCHEMA)
@@ -103,8 +111,21 @@ public class Wrap<R extends ConnectRecord<R>> implements Transformation<R> {
               .field(TIMESTAMP_TYPE, Schema.STRING_SCHEMA)
               .field(KEY, toBuilder(record.keySchema()).optional().build())
               .field(VALUE, toBuilder(record.valueSchema()).optional().build())
-              .field(HEADERS, SchemaBuilder.array(Schema.STRING_SCHEMA).optional().build())
-              .build();
+              .field(HEADERS, SchemaBuilder.array(Schema.STRING_SCHEMA).optional().build());
+
+      if (schemaVersionFrom != null) {
+        switch (schemaVersionFrom) {
+          case KEY:
+            schemaBuilder = schemaBuilder.version(record.keySchema().version());
+            break;
+          case VALUE:
+            schemaBuilder = schemaBuilder.version(record.valueSchema().version());
+            break;
+        }
+      }
+
+      schema = schemaBuilder.build();
+
       schemaUpdateCache.put(keyValueSchema, schema);
     }
 
@@ -209,6 +230,11 @@ public class Wrap<R extends ConnectRecord<R>> implements Transformation<R> {
   public void configure(Map<String, ?> configs) {
     val config = new SimpleConfig(CONFIG_DEF, configs);
     includeHeaders = config.getBoolean(INCLUDE_HEADERS_CONFIG);
+    try {
+      schemaVersionFrom = SchemaFrom.valueOf(config.getString(SCHEMA_VERSION_FROM_CONFIG));
+    } catch (IllegalArgumentException | NullPointerException e) {
+      // nothing we can do
+    }
 
     schemaUpdateCache = new SynchronizedCache<>(new LRUCache<>(16));
   }
@@ -232,5 +258,10 @@ public class Wrap<R extends ConnectRecord<R>> implements Transformation<R> {
         schema,
         value,
         record.timestamp());
+  }
+
+  private enum SchemaFrom {
+    KEY,
+    VALUE
   }
 }
