@@ -15,6 +15,16 @@
  */
 package com.github.f0xdx;
 
+import static com.github.f0xdx.Schemas.toBuilder;
+import static com.github.f0xdx.Wrap.*;
+import static org.apache.kafka.common.record.TimestampType.CREATE_TIME;
+import static org.apache.kafka.connect.data.Schema.INT32_SCHEMA;
+import static org.apache.kafka.connect.data.Schema.STRING_SCHEMA;
+import static org.apache.kafka.connect.data.Schema.Type.STRUCT;
+import static org.junit.jupiter.api.Assertions.*;
+
+import java.util.Collections;
+import java.util.Map;
 import lombok.val;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
@@ -25,17 +35,6 @@ import org.apache.kafka.connect.transforms.util.Requirements;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-
-import java.util.Collections;
-import java.util.Map;
-
-import static com.github.f0xdx.Schemas.toBuilder;
-import static com.github.f0xdx.Wrap.*;
-import static org.apache.kafka.common.record.TimestampType.CREATE_TIME;
-import static org.apache.kafka.connect.data.Schema.INT32_SCHEMA;
-import static org.apache.kafka.connect.data.Schema.STRING_SCHEMA;
-import static org.apache.kafka.connect.data.Schema.Type.STRUCT;
-import static org.junit.jupiter.api.Assertions.*;
 
 class WrapTest {
 

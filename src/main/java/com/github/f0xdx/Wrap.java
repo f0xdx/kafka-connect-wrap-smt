@@ -15,7 +15,14 @@
  */
 package com.github.f0xdx;
 
+import static com.github.f0xdx.Schemas.schemaOf;
+import static com.github.f0xdx.Schemas.toBuilder;
+import static org.apache.kafka.connect.data.SchemaProjector.project;
+import static org.apache.kafka.connect.transforms.util.Requirements.requireSinkRecord;
+
 import com.github.f0xdx.Schemas.KeyValueSchema;
+import java.util.HashMap;
+import java.util.Map;
 import lombok.*;
 import org.apache.kafka.common.cache.Cache;
 import org.apache.kafka.common.cache.LRUCache;
@@ -28,14 +35,6 @@ import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.DataException;
 import org.apache.kafka.connect.transforms.Transformation;
 import org.apache.kafka.connect.transforms.util.SimpleConfig;
-
-import java.util.HashMap;
-import java.util.Map;
-
-import static com.github.f0xdx.Schemas.schemaOf;
-import static com.github.f0xdx.Schemas.toBuilder;
-import static org.apache.kafka.connect.data.SchemaProjector.project;
-import static org.apache.kafka.connect.transforms.util.Requirements.requireSinkRecord;
 
 /**
  * Single message transformation (SMT) that wraps key, value and meta-data (partition, offset,
