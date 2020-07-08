@@ -15,15 +15,21 @@
  */
 package com.github.f0xdx;
 
+import static com.github.f0xdx.Schemas.optionalSchemaOrElse;
 import static com.github.f0xdx.Schemas.schemaOf;
-import static com.github.f0xdx.Schemas.toBuilder;
+import static org.apache.kafka.connect.data.Schema.OPTIONAL_STRING_SCHEMA;
 import static org.apache.kafka.connect.data.SchemaProjector.project;
 import static org.apache.kafka.connect.transforms.util.Requirements.requireSinkRecord;
 
 import com.github.f0xdx.Schemas.KeyValueSchema;
 import java.util.HashMap;
 import java.util.Map;
-import lombok.*;
+import java.util.Optional;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NonNull;
+import lombok.val;
+import lombok.var;
 import org.apache.kafka.common.cache.Cache;
 import org.apache.kafka.common.cache.LRUCache;
 import org.apache.kafka.common.cache.SynchronizedCache;
@@ -73,13 +79,12 @@ public class Wrap<R extends ConnectRecord<R>> implements Transformation<R> {
   static final String TIMESTAMP = "timestamp";
   static final String TIMESTAMP_TYPE = "timestamp_type";
   static final String KEY = "key";
-  static final String KEY_MISSING = "key_missing";
   static final String VALUE = "value";
-  static final String VALUE_MISSING = "value_missing";
   static final String HEADERS = "headers";
 
   private volatile boolean includeHeaders;
   private Cache<KeyValueSchema, Schema> schemaUpdateCache;
+  private Schema lastSchema;
 
   /**
    * Retrieve a {@link Schema} from the cache, update cache on cache miss.
@@ -92,31 +97,35 @@ public class Wrap<R extends ConnectRecord<R>> implements Transformation<R> {
     var schema = schemaUpdateCache.get(keyValueSchema);
 
     if (schema == null) { // cache miss
-      val builder =
+      schema =
           SchemaBuilder.struct()
               .field(TOPIC, Schema.STRING_SCHEMA)
               .field(PARTITION, Schema.INT32_SCHEMA)
               .field(OFFSET, Schema.INT64_SCHEMA)
               .field(TIMESTAMP, Schema.INT64_SCHEMA)
               .field(TIMESTAMP_TYPE, Schema.STRING_SCHEMA)
-              .field(HEADERS, SchemaBuilder.array(Schema.STRING_SCHEMA).optional().build());
+              .field(HEADERS, SchemaBuilder.array(Schema.STRING_SCHEMA).optional().build())
+              .field(KEY, optionalSchemaOrElse(record.keySchema(), this::lastKeySchema))
+              .field(VALUE, optionalSchemaOrElse(record.valueSchema(), this::lastValueSchema))
+              .build();
 
-      if (record.key() != null) {
-        builder.field(KEY, toBuilder(record.keySchema()).optional().build());
-      } else {
-        builder.field(KEY_MISSING, Schema.BOOLEAN_SCHEMA);
-      }
-      if (record.value() != null) {
-        builder.field(VALUE, toBuilder(record.valueSchema()).optional().build());
-      } else {
-        builder.field(VALUE_MISSING, Schema.BOOLEAN_SCHEMA);
-      }
-
-      schema = builder.build();
       schemaUpdateCache.put(keyValueSchema, schema);
+      lastSchema = schema;
     }
 
     return schema;
+  }
+
+  synchronized Schema lastKeySchema() {
+    return Optional.ofNullable(lastSchema)
+        .map(schema -> schema.field(KEY).schema())
+        .orElse(OPTIONAL_STRING_SCHEMA);
+  }
+
+  synchronized Schema lastValueSchema() {
+    return Optional.ofNullable(lastSchema)
+        .map(schema -> schema.field(VALUE).schema())
+        .orElse(OPTIONAL_STRING_SCHEMA);
   }
 
   /**
@@ -136,13 +145,7 @@ public class Wrap<R extends ConnectRecord<R>> implements Transformation<R> {
     result.put(TIMESTAMP, sinkRecord.timestamp());
     result.put(TIMESTAMP_TYPE, sinkRecord.timestampType().name);
     result.put(KEY, sinkRecord.key());
-    if (sinkRecord.key() == null) {
-      result.put(KEY_MISSING, true);
-    }
     result.put(VALUE, sinkRecord.value());
-    if (sinkRecord.value() == null) {
-      result.put(VALUE_MISSING, true);
-    }
 
     if (includeHeaders) {
       result.put(HEADERS, sinkRecord.headers());
@@ -168,19 +171,21 @@ public class Wrap<R extends ConnectRecord<R>> implements Transformation<R> {
             .put(TIMESTAMP, sinkRecord.timestamp())
             .put(TIMESTAMP_TYPE, sinkRecord.timestampType().name);
 
-    if (sinkRecord.key() != null) {
+    if (sinkRecord.keySchema() != null) {
       result.put(
           KEY, project(sinkRecord.keySchema(), sinkRecord.key(), schema.field(KEY).schema()));
     } else {
-      result.put(KEY_MISSING, true);
+      assert record.key() == null : "null key with null schema cannot be wrapped with schema";
+      result.put(KEY, null);
     }
 
-    if (sinkRecord.value() != null) {
+    if (sinkRecord.valueSchema() != null) {
       result.put(
           VALUE,
           project(sinkRecord.valueSchema(), sinkRecord.value(), schema.field(VALUE).schema()));
     } else {
-      result.put(VALUE_MISSING, true);
+      assert record.value() == null : "null value with null schema cannot be wrapped with schema";
+      result.put(VALUE, null);
     }
 
     if (includeHeaders) {

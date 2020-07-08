@@ -17,6 +17,7 @@ package com.github.f0xdx;
 
 import static org.apache.kafka.connect.data.Schema.BOOLEAN_SCHEMA;
 import static org.apache.kafka.connect.data.Schema.INT32_SCHEMA;
+import static org.apache.kafka.connect.data.Schema.OPTIONAL_STRING_SCHEMA;
 import static org.apache.kafka.connect.data.Schema.STRING_SCHEMA;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -57,6 +58,29 @@ class SchemasTest {
         "schema of",
         () -> assertEquals(STRING_SCHEMA, actual.getKey()),
         () -> assertEquals(BOOLEAN_SCHEMA, actual.getValue()));
+  }
+
+  @DisplayName("derive optional schema")
+  @ParameterizedTest
+  @EnumSource(
+      value = Type.class,
+      names = {"ARRAY", "MAP"},
+      mode = Mode.EXCLUDE)
+  void optionalSchemaOrElse(Type type) {
+    val schema = new SchemaBuilder(type).build();
+    val optionalSchema = new SchemaBuilder(type).optional().build();
+
+    assertAll(
+        "optional schema",
+        () -> assertEquals(optionalSchema, Schemas.optionalSchemaOrElse(schema, () -> null)),
+        () ->
+            assertEquals(optionalSchema, Schemas.optionalSchemaOrElse(optionalSchema, () -> null)));
+  }
+
+  @Test
+  void optionalSchemaOrElseNull() {
+    assertEquals(
+        OPTIONAL_STRING_SCHEMA, Schemas.optionalSchemaOrElse(null, () -> OPTIONAL_STRING_SCHEMA));
   }
 
   @DisplayName("to builder (null value)")
