@@ -15,31 +15,6 @@
  */
 package com.github.f0xdx;
 
-import static com.github.f0xdx.Schemas.toBuilder;
-import static com.github.f0xdx.Wrap.HEADERS;
-import static com.github.f0xdx.Wrap.INCLUDE_HEADERS_CONFIG;
-import static com.github.f0xdx.Wrap.KEY;
-import static com.github.f0xdx.Wrap.OFFSET;
-import static com.github.f0xdx.Wrap.PARTITION;
-import static com.github.f0xdx.Wrap.TIMESTAMP;
-import static com.github.f0xdx.Wrap.TIMESTAMP_TYPE;
-import static com.github.f0xdx.Wrap.TOPIC;
-import static com.github.f0xdx.Wrap.VALUE;
-import static org.apache.kafka.common.record.TimestampType.CREATE_TIME;
-import static org.apache.kafka.connect.data.Schema.INT32_SCHEMA;
-import static org.apache.kafka.connect.data.Schema.STRING_SCHEMA;
-import static org.apache.kafka.connect.data.Schema.Type.STRUCT;
-import static org.junit.jupiter.api.Assertions.assertAll;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertSame;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-
-import java.util.Collections;
-import java.util.Map;
 import lombok.val;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
@@ -50,6 +25,17 @@ import org.apache.kafka.connect.transforms.util.Requirements;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+
+import java.util.Collections;
+import java.util.Map;
+
+import static com.github.f0xdx.Schemas.toBuilder;
+import static com.github.f0xdx.Wrap.*;
+import static org.apache.kafka.common.record.TimestampType.CREATE_TIME;
+import static org.apache.kafka.connect.data.Schema.INT32_SCHEMA;
+import static org.apache.kafka.connect.data.Schema.STRING_SCHEMA;
+import static org.apache.kafka.connect.data.Schema.Type.STRUCT;
+import static org.junit.jupiter.api.Assertions.*;
 
 class WrapTest {
 
@@ -98,7 +84,8 @@ class WrapTest {
         () -> assertTrue(value.containsKey("offset")),
         () -> assertEquals(1L, value.get("offset")),
         () -> assertTrue(value.containsKey("value")),
-        () -> assertEquals("value", value.get("value")));
+        () -> assertEquals("value", value.get("value")),
+        () -> assertEquals(true, value.get("key_missing")));
   }
 
   @DisplayName("apply w/o schema")
@@ -157,7 +144,8 @@ class WrapTest {
         () -> assertEquals("topic", value.getString("topic")),
         () -> assertEquals(0, value.getInt32("partition")),
         () -> assertEquals(1L, value.getInt64("offset")),
-        () -> assertEquals("value", value.getString("value")));
+        () -> assertEquals("value", value.getString("value")),
+        () -> assertTrue(value.getBoolean("key_missing")));
   }
 
   @DisplayName("apply w/ schema")
@@ -327,19 +315,21 @@ class WrapTest {
     assertAll(
         "transformed record",
         () -> assertNotNull(res),
-        () -> assertNull(res.valueSchema()),
+        () -> assertNull(res.keySchema()),
         () -> assertNull(res.key()),
+        () -> assertNotNull(res.valueSchema()),
         () -> assertNotNull(res.value()),
-        () -> assertTrue(res.value() instanceof Map));
+        () -> assertTrue(res.value() instanceof Struct));
 
-    val value = Requirements.requireMap(res.value(), "testing");
+    val value = Requirements.requireStruct(res.value(), "testing");
 
     assertAll(
         "contained value",
         () -> assertEquals("topic", value.get("topic")),
         () -> assertEquals(0, value.get("partition")),
         () -> assertEquals(1L, value.get("offset")),
-        () -> assertEquals("value", value.get("value")));
+        () -> assertEquals("value", value.get("value")),
+        () -> assertTrue(value.getBoolean("key_missing")));
   }
 
   @DisplayName("apply with key and value schemas")
@@ -426,7 +416,8 @@ class WrapTest {
         () -> assertEquals("topic", value.getString("topic")),
         () -> assertEquals(0, value.getInt32("partition")),
         () -> assertEquals(1L, value.getInt64("offset")),
-        () -> assertNull(value.getStruct("value")));
+        () -> assertTrue(value.getBoolean("value_missing")),
+        () -> assertNull(value.schema().field("value")));
   }
 
   @DisplayName("configuration description")
