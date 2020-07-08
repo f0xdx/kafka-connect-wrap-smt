@@ -15,13 +15,34 @@
  */
 package com.github.f0xdx;
 
+import static com.github.f0xdx.Schemas.optionalSchemaOrElse;
 import static com.github.f0xdx.Schemas.toBuilder;
-import static com.github.f0xdx.Wrap.*;
+import static com.github.f0xdx.Wrap.HEADERS;
+import static com.github.f0xdx.Wrap.INCLUDE_HEADERS_CONFIG;
+import static com.github.f0xdx.Wrap.KEY;
+import static com.github.f0xdx.Wrap.OFFSET;
+import static com.github.f0xdx.Wrap.PARTITION;
+import static com.github.f0xdx.Wrap.TIMESTAMP;
+import static com.github.f0xdx.Wrap.TIMESTAMP_TYPE;
+import static com.github.f0xdx.Wrap.TOPIC;
+import static com.github.f0xdx.Wrap.VALUE;
 import static org.apache.kafka.common.record.TimestampType.CREATE_TIME;
+import static org.apache.kafka.connect.data.Schema.BOOLEAN_SCHEMA;
 import static org.apache.kafka.connect.data.Schema.INT32_SCHEMA;
+import static org.apache.kafka.connect.data.Schema.OPTIONAL_BOOLEAN_SCHEMA;
+import static org.apache.kafka.connect.data.Schema.OPTIONAL_INT32_SCHEMA;
+import static org.apache.kafka.connect.data.Schema.OPTIONAL_STRING_SCHEMA;
 import static org.apache.kafka.connect.data.Schema.STRING_SCHEMA;
+import static org.apache.kafka.connect.data.Schema.Type.INT32;
 import static org.apache.kafka.connect.data.Schema.Type.STRUCT;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertAll;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.Collections;
 import java.util.Map;
@@ -52,9 +73,52 @@ class WrapTest {
     val transform = new Wrap<SourceRecord>();
     transform.configure(Collections.emptyMap());
 
-    assertThrows(
-        DataException.class,
-        () -> transform.apply(new SourceRecord(null, null, "topic", STRING_SCHEMA, "source")));
+    val sourceRecord = new SourceRecord(null, null, "topic", STRING_SCHEMA, "source");
+
+    assertThrows(DataException.class, () -> transform.apply(sourceRecord));
+  }
+
+  @DisplayName("obtain last key schema (no last schema)")
+  @Test
+  void lastKeySchemaWithoutLastSchema() {
+    assertEquals(OPTIONAL_STRING_SCHEMA, transform.lastKeySchema());
+  }
+
+  @DisplayName("obtain last key schema")
+  @Test
+  void lastKeySchemaWithLastSchema() {
+
+    val res =
+        transform.getSchema(
+            new SinkRecord("topic", 0, INT32_SCHEMA, 42, BOOLEAN_SCHEMA, true, 1, 0L, CREATE_TIME));
+
+    assertAll(
+        "obtained schema",
+        () -> assertNotNull(res),
+        () -> assertNotNull(transform.getLastSchema()),
+        () -> assertEquals(res, transform.getLastSchema()),
+        () -> assertEquals(OPTIONAL_INT32_SCHEMA, transform.lastKeySchema()));
+  }
+
+  @DisplayName("obtain last value schema (no last schema)")
+  @Test
+  void lastValueSchemaWithoutLastSchema() {
+    assertEquals(OPTIONAL_STRING_SCHEMA, transform.lastValueSchema());
+  }
+
+  @DisplayName("obtain last value schema")
+  @Test
+  void lastValueSchemaWithLastSchema() {
+    val res =
+        transform.getSchema(
+            new SinkRecord("topic", 0, INT32_SCHEMA, 42, BOOLEAN_SCHEMA, true, 1, 0L, CREATE_TIME));
+
+    assertAll(
+        "obtained schema",
+        () -> assertNotNull(res),
+        () -> assertNotNull(transform.getLastSchema()),
+        () -> assertEquals(res, transform.getLastSchema()),
+        () -> assertEquals(OPTIONAL_BOOLEAN_SCHEMA, transform.lastValueSchema()));
   }
 
   @DisplayName("apply w/o schema (null key)")
@@ -76,15 +140,16 @@ class WrapTest {
 
     assertAll(
         "contained value",
-        () -> assertTrue(value.containsKey("topic")),
-        () -> assertEquals("topic", value.get("topic")),
-        () -> assertTrue(value.containsKey("partition")),
-        () -> assertEquals(0, value.get("partition")),
-        () -> assertTrue(value.containsKey("offset")),
-        () -> assertEquals(1L, value.get("offset")),
-        () -> assertTrue(value.containsKey("value")),
-        () -> assertEquals("value", value.get("value")),
-        () -> assertEquals(true, value.get("key_missing")));
+        () -> assertTrue(value.containsKey(TOPIC)),
+        () -> assertEquals("topic", value.get(TOPIC)),
+        () -> assertTrue(value.containsKey(PARTITION)),
+        () -> assertEquals(0, value.get(PARTITION)),
+        () -> assertTrue(value.containsKey(OFFSET)),
+        () -> assertEquals(1L, value.get(OFFSET)),
+        () -> assertTrue(value.containsKey(VALUE)),
+        () -> assertEquals("value", value.get(VALUE)),
+        () -> assertTrue(value.containsKey(KEY)),
+        () -> assertNull(value.get(KEY)));
   }
 
   @DisplayName("apply w/o schema")
@@ -124,14 +189,17 @@ class WrapTest {
     val res =
         transform.applyWithSchema(
             new SinkRecord(
-                "topic", 0, STRING_SCHEMA, null, STRING_SCHEMA, "value", 1, 0L, CREATE_TIME));
+                "topic", 0, INT32_SCHEMA, null, STRING_SCHEMA, "value", 1, 0L, CREATE_TIME));
 
     assertAll(
         "transformed record",
         () -> assertNotNull(res),
         () -> assertNotNull(res.valueSchema()),
         () -> assertSame(STRUCT, res.valueSchema().type()),
-        () -> assertNotNull(res.valueSchema()),
+        () -> assertEquals(OPTIONAL_STRING_SCHEMA, res.valueSchema().field(VALUE).schema()),
+        () -> assertEquals(OPTIONAL_INT32_SCHEMA, res.valueSchema().field(KEY).schema()),
+        () -> assertNotNull(res.keySchema()),
+        () -> assertSame(INT32, res.keySchema().type()),
         () -> assertNull(res.key()),
         () -> assertNotNull(res.value()),
         () -> assertTrue(res.value() instanceof Struct));
@@ -140,11 +208,11 @@ class WrapTest {
 
     assertAll(
         "contained value",
-        () -> assertEquals("topic", value.getString("topic")),
-        () -> assertEquals(0, value.getInt32("partition")),
-        () -> assertEquals(1L, value.getInt64("offset")),
-        () -> assertEquals("value", value.getString("value")),
-        () -> assertTrue(value.getBoolean("key_missing")));
+        () -> assertEquals("topic", value.getString(TOPIC)),
+        () -> assertEquals(0, value.getInt32(PARTITION)),
+        () -> assertEquals(1L, value.getInt64(OFFSET)),
+        () -> assertEquals("value", value.getString(VALUE)),
+        () -> assertNull(value.get(KEY)));
   }
 
   @DisplayName("apply w/ schema")
@@ -181,10 +249,10 @@ class WrapTest {
 
     assertAll(
         "contained value",
-        () -> assertEquals("key", value.getString("key")),
-        () -> assertEquals("topic", value.getString("topic")),
-        () -> assertEquals(0, value.getInt32("partition")),
-        () -> assertEquals(1L, value.getInt64("offset")),
+        () -> assertEquals("key", value.getString(KEY)),
+        () -> assertEquals("topic", value.getString(TOPIC)),
+        () -> assertEquals(0, value.getInt32(PARTITION)),
+        () -> assertEquals(1L, value.getInt64(OFFSET)),
         () ->
             assertEquals(
                 new Struct(toBuilder(valueSchema).optional().build())
@@ -317,6 +385,8 @@ class WrapTest {
         () -> assertNull(res.keySchema()),
         () -> assertNull(res.key()),
         () -> assertNotNull(res.valueSchema()),
+        () -> assertEquals(OPTIONAL_STRING_SCHEMA, res.valueSchema().field(VALUE).schema()),
+        () -> assertEquals(OPTIONAL_STRING_SCHEMA, res.valueSchema().field(KEY).schema()),
         () -> assertNotNull(res.value()),
         () -> assertTrue(res.value() instanceof Struct));
 
@@ -324,11 +394,11 @@ class WrapTest {
 
     assertAll(
         "contained value",
-        () -> assertEquals("topic", value.get("topic")),
-        () -> assertEquals(0, value.get("partition")),
-        () -> assertEquals(1L, value.get("offset")),
-        () -> assertEquals("value", value.get("value")),
-        () -> assertTrue(value.getBoolean("key_missing")));
+        () -> assertEquals("topic", value.get(TOPIC)),
+        () -> assertEquals(0, value.get(PARTITION)),
+        () -> assertEquals(1L, value.get(OFFSET)),
+        () -> assertEquals("value", value.get(VALUE)),
+        () -> assertNull(value.get(KEY)));
   }
 
   @DisplayName("apply with key and value schemas")
@@ -369,10 +439,10 @@ class WrapTest {
 
     assertAll(
         "contained value",
-        () -> assertEquals("key", value.getString("key")),
-        () -> assertEquals("topic", value.getString("topic")),
-        () -> assertEquals(0, value.getInt32("partition")),
-        () -> assertEquals(1L, value.getInt64("offset")),
+        () -> assertEquals("key", value.getString(KEY)),
+        () -> assertEquals("topic", value.getString(TOPIC)),
+        () -> assertEquals(0, value.getInt32(PARTITION)),
+        () -> assertEquals(1L, value.getInt64(OFFSET)),
         () ->
             assertEquals(
                 new Struct(toBuilder(valueSchema).optional().build())
@@ -411,12 +481,16 @@ class WrapTest {
 
     assertAll(
         "contained value",
-        () -> assertEquals("key", value.getString("key")),
-        () -> assertEquals("topic", value.getString("topic")),
-        () -> assertEquals(0, value.getInt32("partition")),
-        () -> assertEquals(1L, value.getInt64("offset")),
-        () -> assertTrue(value.getBoolean("value_missing")),
-        () -> assertNull(value.schema().field("value")));
+        () -> assertEquals("key", value.getString(KEY)),
+        () -> assertEquals("topic", value.getString(TOPIC)),
+        () -> assertEquals(0, value.getInt32(PARTITION)),
+        () -> assertEquals(1L, value.getInt64(OFFSET)),
+        () -> assertNotNull(value.schema().field(VALUE)),
+        () ->
+            assertEquals(
+                optionalSchemaOrElse(valueSchema, () -> OPTIONAL_STRING_SCHEMA),
+                value.schema().field(VALUE).schema()),
+        () -> assertNull(value.get(VALUE)));
   }
 
   @DisplayName("configuration description")

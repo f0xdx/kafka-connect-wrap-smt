@@ -18,6 +18,7 @@ package com.github.f0xdx;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.Supplier;
 import lombok.NonNull;
 import lombok.Value;
 import org.apache.kafka.connect.connector.ConnectRecord;
@@ -49,6 +50,14 @@ public class Schemas {
    */
   public static <R extends ConnectRecord<R>> KeyValueSchema schemaOf(@NonNull R record) {
     return KeyValueSchema.of(record.keySchema(), record.valueSchema());
+  }
+
+  public static Schema optionalSchemaOrElse(Schema schema, @NonNull Supplier<Schema> alternative) {
+    return Optional.ofNullable(schema)
+        .map(Schemas::toBuilder)
+        .map(SchemaBuilder::optional)
+        .map(SchemaBuilder::build)
+        .orElseGet(alternative);
   }
 
   /**
