@@ -17,32 +17,12 @@ package com.github.f0xdx;
 
 import static com.github.f0xdx.Schemas.optionalSchemaOrElse;
 import static com.github.f0xdx.Schemas.toBuilder;
-import static com.github.f0xdx.Wrap.HEADERS;
-import static com.github.f0xdx.Wrap.INCLUDE_HEADERS_CONFIG;
-import static com.github.f0xdx.Wrap.KEY;
-import static com.github.f0xdx.Wrap.OFFSET;
-import static com.github.f0xdx.Wrap.PARTITION;
-import static com.github.f0xdx.Wrap.TIMESTAMP;
-import static com.github.f0xdx.Wrap.TIMESTAMP_TYPE;
-import static com.github.f0xdx.Wrap.TOPIC;
-import static com.github.f0xdx.Wrap.VALUE;
+import static com.github.f0xdx.Wrap.*;
 import static org.apache.kafka.common.record.TimestampType.CREATE_TIME;
-import static org.apache.kafka.connect.data.Schema.BOOLEAN_SCHEMA;
-import static org.apache.kafka.connect.data.Schema.INT32_SCHEMA;
-import static org.apache.kafka.connect.data.Schema.OPTIONAL_BOOLEAN_SCHEMA;
-import static org.apache.kafka.connect.data.Schema.OPTIONAL_INT32_SCHEMA;
-import static org.apache.kafka.connect.data.Schema.OPTIONAL_STRING_SCHEMA;
-import static org.apache.kafka.connect.data.Schema.STRING_SCHEMA;
+import static org.apache.kafka.connect.data.Schema.*;
 import static org.apache.kafka.connect.data.Schema.Type.INT32;
 import static org.apache.kafka.connect.data.Schema.Type.STRUCT;
-import static org.junit.jupiter.api.Assertions.assertAll;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertSame;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 import java.util.Collections;
 import java.util.Map;
@@ -81,7 +61,7 @@ class WrapTest {
   @DisplayName("obtain last key schema (no last schema)")
   @Test
   void lastKeySchemaWithoutLastSchema() {
-    assertEquals(OPTIONAL_STRING_SCHEMA, transform.lastKeySchema());
+    assertEquals(OPTIONAL_STRING_SCHEMA, transform.lastKeySchema("topic"));
   }
 
   @DisplayName("obtain last key schema")
@@ -95,15 +75,13 @@ class WrapTest {
     assertAll(
         "obtained schema",
         () -> assertNotNull(res),
-        () -> assertNotNull(transform.getLastSchema()),
-        () -> assertEquals(res, transform.getLastSchema()),
-        () -> assertEquals(OPTIONAL_INT32_SCHEMA, transform.lastKeySchema()));
+        () -> assertEquals(OPTIONAL_INT32_SCHEMA, transform.lastKeySchema("topic")));
   }
 
   @DisplayName("obtain last value schema (no last schema)")
   @Test
   void lastValueSchemaWithoutLastSchema() {
-    assertEquals(OPTIONAL_STRING_SCHEMA, transform.lastValueSchema());
+    assertEquals(OPTIONAL_STRING_SCHEMA, transform.lastValueSchema("topic"));
   }
 
   @DisplayName("obtain last value schema")
@@ -116,9 +94,7 @@ class WrapTest {
     assertAll(
         "obtained schema",
         () -> assertNotNull(res),
-        () -> assertNotNull(transform.getLastSchema()),
-        () -> assertEquals(res, transform.getLastSchema()),
-        () -> assertEquals(OPTIONAL_BOOLEAN_SCHEMA, transform.lastValueSchema()));
+        () -> assertEquals(OPTIONAL_BOOLEAN_SCHEMA, transform.lastValueSchema("topic")));
   }
 
   @DisplayName("apply w/o schema (null key)")

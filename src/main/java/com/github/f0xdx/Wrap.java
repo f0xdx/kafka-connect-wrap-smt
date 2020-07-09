@@ -25,11 +25,7 @@ import com.github.f0xdx.Schemas.KeyValueSchema;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
-import lombok.AccessLevel;
-import lombok.Getter;
-import lombok.NonNull;
-import lombok.val;
-import lombok.var;
+import lombok.*;
 import org.apache.kafka.common.cache.Cache;
 import org.apache.kafka.common.cache.LRUCache;
 import org.apache.kafka.common.cache.SynchronizedCache;
@@ -84,7 +80,7 @@ public class Wrap<R extends ConnectRecord<R>> implements Transformation<R> {
 
   private volatile boolean includeHeaders;
   private Cache<KeyValueSchema, Schema> schemaUpdateCache;
-  private Schema lastSchema;
+  private Cache<String, Schema> topicSchemaCache;
 
   /**
    * Retrieve a {@link Schema} from the cache, update cache on cache miss.
@@ -105,25 +101,31 @@ public class Wrap<R extends ConnectRecord<R>> implements Transformation<R> {
               .field(TIMESTAMP, Schema.INT64_SCHEMA)
               .field(TIMESTAMP_TYPE, Schema.STRING_SCHEMA)
               .field(HEADERS, SchemaBuilder.array(Schema.STRING_SCHEMA).optional().build())
-              .field(KEY, optionalSchemaOrElse(record.keySchema(), this::lastKeySchema))
-              .field(VALUE, optionalSchemaOrElse(record.valueSchema(), this::lastValueSchema))
+              .field(
+                  KEY,
+                  optionalSchemaOrElse(
+                      record.keySchema(), () -> this.lastKeySchema(record.topic())))
+              .field(
+                  VALUE,
+                  optionalSchemaOrElse(
+                      record.valueSchema(), () -> this.lastKeySchema(record.topic())))
               .build();
 
       schemaUpdateCache.put(keyValueSchema, schema);
-      lastSchema = schema;
+      topicSchemaCache.put(record.topic(), schema);
     }
 
     return schema;
   }
 
-  synchronized Schema lastKeySchema() {
-    return Optional.ofNullable(lastSchema)
+  synchronized Schema lastKeySchema(String topic) {
+    return Optional.ofNullable(topicSchemaCache.get(topic))
         .map(schema -> schema.field(KEY).schema())
         .orElse(OPTIONAL_STRING_SCHEMA);
   }
 
-  synchronized Schema lastValueSchema() {
-    return Optional.ofNullable(lastSchema)
+  synchronized Schema lastValueSchema(String topic) {
+    return Optional.ofNullable(topicSchemaCache.get(topic))
         .map(schema -> schema.field(VALUE).schema())
         .orElse(OPTIONAL_STRING_SCHEMA);
   }
@@ -228,6 +230,7 @@ public class Wrap<R extends ConnectRecord<R>> implements Transformation<R> {
   @Override
   public void close() {
     schemaUpdateCache = null;
+    topicSchemaCache = null;
   }
 
   /**
@@ -241,6 +244,7 @@ public class Wrap<R extends ConnectRecord<R>> implements Transformation<R> {
     includeHeaders = config.getBoolean(INCLUDE_HEADERS_CONFIG);
 
     schemaUpdateCache = new SynchronizedCache<>(new LRUCache<>(16));
+    topicSchemaCache = new SynchronizedCache<>(new LRUCache<>(16));
   }
 
   /**
