@@ -15,6 +15,9 @@
  */
 package com.github.f0xdx;
 
+import java.util.*;
+import java.util.function.Supplier;
+import java.util.stream.StreamSupport;
 import lombok.NonNull;
 import lombok.Value;
 import org.apache.kafka.connect.connector.ConnectRecord;
@@ -24,10 +27,6 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.errors.DataException;
 import org.apache.kafka.connect.header.Headers;
-
-import java.util.*;
-import java.util.function.Supplier;
-import java.util.stream.StreamSupport;
 
 /** Helper class for {@link Schema} related tasks. */
 public class Schemas {
@@ -51,8 +50,12 @@ public class Schemas {
    * @param <R> a type extending {@link ConnectRecord}
    * @return the {@link KeyValueSchema} wrapper
    */
-  public static <R extends ConnectRecord<R>> KeyValueSchema schemaOf(@NonNull R record, @NonNull boolean includeHeaders) {
-    return KeyValueSchema.of(record.keySchema(), record.valueSchema(), includeHeaders ? forHeaders(record.headers()) : null);
+  public static <R extends ConnectRecord<R>> KeyValueSchema schemaOf(
+      @NonNull R record, @NonNull boolean includeHeaders) {
+    return KeyValueSchema.of(
+        record.keySchema(),
+        record.valueSchema(),
+        includeHeaders ? forHeaders(record.headers()) : null);
   }
 
   public static Schema optionalSchemaOrElse(Schema schema, @NonNull Supplier<Schema> alternative) {
@@ -119,13 +122,15 @@ public class Schemas {
 
   /**
    * Returns a schema for storing the message headers
+   *
    * @param headers
    * @return
    */
   public static Schema forHeaders(Headers headers) {
     final Map<String, List<Schema>> schemas = new HashMap<>();
     StreamSupport.stream(headers.spliterator(), false)
-            .forEach(header -> {
+        .forEach(
+            header -> {
               if (!schemas.containsKey(header.key())) {
                 schemas.put(header.key(), new ArrayList<>());
               }
@@ -151,14 +156,16 @@ public class Schemas {
     switch (addition.type()) {
       case FLOAT32:
       case FLOAT64:
-        if (schema.type().equals(Schema.Type.FLOAT32) || schema.type().equals(Schema.Type.FLOAT64)) {
+        if (schema.type().equals(Schema.Type.FLOAT32)
+            || schema.type().equals(Schema.Type.FLOAT64)) {
           return Schema.OPTIONAL_FLOAT64_SCHEMA;
         }
       case INT8:
       case INT16:
       case INT32:
       case INT64:
-        if (Arrays.asList(Schema.Type.INT8, Schema.Type.INT16, Schema.Type.INT32, Schema.Type.INT64).contains(schema.type())) {
+        if (Arrays.asList(Schema.Type.INT8, Schema.Type.INT16, Schema.Type.INT32, Schema.Type.INT64)
+            .contains(schema.type())) {
           return Schema.OPTIONAL_INT64_SCHEMA;
         }
       case STRUCT:
@@ -167,24 +174,29 @@ public class Schemas {
         }
       case MAP:
         if (schema.type() == Schema.Type.MAP) {
-          return SchemaBuilder
-                  .map(mergeSchemas(schema.keySchema(), addition.keySchema()), mergeSchemas(schema.valueSchema(), addition.valueSchema()))
-                  .optional()
-                  .build();
+          return SchemaBuilder.map(
+                  mergeSchemas(schema.keySchema(), addition.keySchema()),
+                  mergeSchemas(schema.valueSchema(), addition.valueSchema()))
+              .optional()
+              .build();
         }
       case ARRAY:
         if (schema.type() == Schema.Type.MAP) {
-          return SchemaBuilder
-                  .array(mergeSchemas(schema.valueSchema(), addition.valueSchema()))
-                  .optional()
-                  .build();
+          return SchemaBuilder.array(mergeSchemas(schema.valueSchema(), addition.valueSchema()))
+              .optional()
+              .build();
         }
       default:
         if (Objects.equals(schema.type(), addition.type())) {
           return toBuilder(addition).optional().build();
         }
     }
-    throw new DataException("Cannot merge incompatible schemas of type '" + schema.type().getName() + "' and '" + addition.type().getName() + "'.");
+    throw new DataException(
+        "Cannot merge incompatible schemas of type '"
+            + schema.type().getName()
+            + "' and '"
+            + addition.type().getName()
+            + "'.");
   }
 
   private static Schema mergeStructs(Schema a, Schema b) {
