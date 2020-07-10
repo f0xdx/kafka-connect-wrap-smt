@@ -141,7 +141,7 @@ public class Schemas {
     for (Schema headerSchema : headers) {
       schema = mergeSchemas(schema, headerSchema);
     }
-    return schema;
+    return SchemaBuilder.array(schema).optional().build();
   }
 
   private static Schema mergeSchemas(Schema schema, Schema addition) {
