@@ -15,16 +15,7 @@
  */
 package com.github.f0xdx;
 
-import static com.github.f0xdx.Schemas.optionalSchemaOrElse;
-import static com.github.f0xdx.Schemas.schemaOf;
-import static org.apache.kafka.connect.data.Schema.OPTIONAL_STRING_SCHEMA;
-import static org.apache.kafka.connect.data.SchemaProjector.project;
-import static org.apache.kafka.connect.transforms.util.Requirements.requireSinkRecord;
-
 import com.github.f0xdx.Schemas.KeyValueSchema;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Optional;
 import lombok.*;
 import org.apache.kafka.common.cache.Cache;
 import org.apache.kafka.common.cache.LRUCache;
@@ -37,6 +28,16 @@ import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.DataException;
 import org.apache.kafka.connect.transforms.Transformation;
 import org.apache.kafka.connect.transforms.util.SimpleConfig;
+
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Optional;
+
+import static com.github.f0xdx.Schemas.optionalSchemaOrElse;
+import static com.github.f0xdx.Schemas.schemaOf;
+import static org.apache.kafka.connect.data.Schema.OPTIONAL_STRING_SCHEMA;
+import static org.apache.kafka.connect.data.SchemaProjector.project;
+import static org.apache.kafka.connect.transforms.util.Requirements.requireSinkRecord;
 
 /**
  * Single message transformation (SMT) that wraps key, value and meta-data (partition, offset,
@@ -89,18 +90,17 @@ public class Wrap<R extends ConnectRecord<R>> implements Transformation<R> {
    * @return the {@link Schema} for wrapped records
    */
   synchronized Schema getSchema(@NonNull R record) {
-    val keyValueSchema = schemaOf(record);
+    val keyValueSchema = schemaOf(record, includeHeaders);
     var schema = schemaUpdateCache.get(keyValueSchema);
 
     if (schema == null) { // cache miss
-      schema =
+      val builder =
           SchemaBuilder.struct()
               .field(TOPIC, Schema.STRING_SCHEMA)
               .field(PARTITION, Schema.INT32_SCHEMA)
               .field(OFFSET, Schema.INT64_SCHEMA)
               .field(TIMESTAMP, Schema.INT64_SCHEMA)
               .field(TIMESTAMP_TYPE, Schema.STRING_SCHEMA)
-              .field(HEADERS, SchemaBuilder.array(Schema.STRING_SCHEMA).optional().build())
               .field(
                   KEY,
                   optionalSchemaOrElse(
@@ -108,8 +108,13 @@ public class Wrap<R extends ConnectRecord<R>> implements Transformation<R> {
               .field(
                   VALUE,
                   optionalSchemaOrElse(
-                      record.valueSchema(), () -> this.lastKeySchema(record.topic())))
-              .build();
+                      record.valueSchema(), () -> this.lastKeySchema(record.topic())));
+
+      if (includeHeaders) {
+        builder.field(HEADERS, Schemas.forHeaders(record.headers()));
+      }
+
+      schema = builder.build();
 
       schemaUpdateCache.put(keyValueSchema, schema);
       topicSchemaCache.put(record.topic(), schema);
