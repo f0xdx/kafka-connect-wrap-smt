@@ -30,6 +30,10 @@ import org.apache.kafka.connect.header.Headers;
 
 /** Helper class for {@link Schema} related tasks. */
 public class Schemas {
+  private static final List<Schema.Type> floatTypes =
+      Arrays.asList(Schema.Type.FLOAT32, Schema.Type.FLOAT64);
+  private static final List<Schema.Type> intTypes =
+      Arrays.asList(Schema.Type.INT8, Schema.Type.INT16, Schema.Type.INT32, Schema.Type.INT64);
 
   /** Wrapper class for unique combinations of schemas. */
   @Value(staticConstructor = "of")
@@ -150,23 +154,21 @@ public class Schemas {
     return SchemaBuilder.array(schema).optional().build();
   }
 
-  private static Schema mergeSchemas(Schema schema, Schema addition) {
+  private static Schema mergeSchemas(Schema schema, @NonNull Schema addition) {
     if (schema == null) {
       return addition;
     }
     switch (addition.type()) {
       case FLOAT32:
       case FLOAT64:
-        if (schema.type().equals(Schema.Type.FLOAT32)
-            || schema.type().equals(Schema.Type.FLOAT64)) {
+        if (floatTypes.contains(schema.type())) {
           return Schema.OPTIONAL_FLOAT64_SCHEMA;
         }
       case INT8:
       case INT16:
       case INT32:
       case INT64:
-        if (Arrays.asList(Schema.Type.INT8, Schema.Type.INT16, Schema.Type.INT32, Schema.Type.INT64)
-            .contains(schema.type())) {
+        if (intTypes.contains(schema.type())) {
           return Schema.OPTIONAL_INT64_SCHEMA;
         }
       case STRUCT:
