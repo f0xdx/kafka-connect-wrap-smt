@@ -47,11 +47,12 @@ public class Schemas {
    * Extract a {@link KeyValueSchema} from a provided record of type {@link R}.
    *
    * @param record the record of type {@link R}
+   * @param includeHeaders whether to include headers into the schema
    * @param <R> a type extending {@link ConnectRecord}
    * @return the {@link KeyValueSchema} wrapper
    */
   public static <R extends ConnectRecord<R>> KeyValueSchema schemaOf(
-      @NonNull R record, @NonNull boolean includeHeaders) {
+      @NonNull R record, boolean includeHeaders) {
     return KeyValueSchema.of(
         record.keySchema(),
         record.valueSchema(),
@@ -123,21 +124,21 @@ public class Schemas {
   /**
    * Returns a schema for storing the message headers
    *
-   * @param headers
-   * @return
+   * @param headers the message headers (can be null)
+   * @return a struct schema for the headers
    */
   public static Schema forHeaders(Headers headers) {
-    final Map<String, List<Schema>> schemas = new HashMap<>();
-    StreamSupport.stream(headers.spliterator(), false)
-        .forEach(
-            header -> {
-              if (!schemas.containsKey(header.key())) {
-                schemas.put(header.key(), new ArrayList<>());
-              }
-              schemas.get(header.key()).add(header.schema());
-            });
     final SchemaBuilder builder = SchemaBuilder.struct();
-    schemas.forEach((key, value) -> builder.field(key, mergeSchemas(value)));
+    if (headers != null) {
+      final Map<String, List<Schema>> schemas = new HashMap<>();
+      StreamSupport.stream(headers.spliterator(), false)
+          .forEach(
+              header ->
+                  schemas
+                      .computeIfAbsent(header.key(), (k) -> new ArrayList<>())
+                      .add(header.schema()));
+      schemas.forEach((key, value) -> builder.field(key, mergeSchemas(value)));
+    }
     return builder.build();
   }
 
@@ -181,7 +182,7 @@ public class Schemas {
               .build();
         }
       case ARRAY:
-        if (schema.type() == Schema.Type.MAP) {
+        if (schema.type() == Schema.Type.ARRAY) {
           return SchemaBuilder.array(mergeSchemas(schema.valueSchema(), addition.valueSchema()))
               .optional()
               .build();
@@ -199,14 +200,14 @@ public class Schemas {
             + "'.");
   }
 
-  private static Schema mergeStructs(Schema a, Schema b) {
+  private static Schema mergeStructs(@NonNull Schema a, @NonNull Schema b) {
     SchemaBuilder builder = SchemaBuilder.struct();
     applyStructToBuilder(builder, a);
     applyStructToBuilder(builder, b);
     return builder.optional().build();
   }
 
-  private static void applyStructToBuilder(SchemaBuilder builder, Schema schema) {
+  private static void applyStructToBuilder(@NonNull SchemaBuilder builder, @NonNull Schema schema) {
     for (Field field : schema.fields()) {
       Field existingField = builder.field(field.name());
       if (existingField != null) {
