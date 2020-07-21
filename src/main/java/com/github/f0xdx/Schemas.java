@@ -15,7 +15,18 @@
  */
 package com.github.f0xdx;
 
-import java.util.*;
+import static java.util.Collections.unmodifiableSet;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.Set;
 import java.util.function.Supplier;
 import java.util.stream.StreamSupport;
 import lombok.NonNull;
@@ -30,10 +41,14 @@ import org.apache.kafka.connect.header.Headers;
 
 /** Helper class for {@link Schema} related tasks. */
 public class Schemas {
-  private static final List<Schema.Type> floatTypes =
-      Arrays.asList(Schema.Type.FLOAT32, Schema.Type.FLOAT64);
-  private static final List<Schema.Type> intTypes =
-      Arrays.asList(Schema.Type.INT8, Schema.Type.INT16, Schema.Type.INT32, Schema.Type.INT64);
+  private static final Set<Schema.Type> floatTypes =
+      unmodifiableSet(new HashSet<>(Arrays.asList(Schema.Type.FLOAT32, Schema.Type.FLOAT64)));
+
+  private static final Set<Schema.Type> intTypes =
+      unmodifiableSet(
+          new HashSet<>(
+              Arrays.asList(
+                  Schema.Type.INT8, Schema.Type.INT16, Schema.Type.INT32, Schema.Type.INT64)));
 
   /** Wrapper class for unique combinations of schemas. */
   @Value(staticConstructor = "of")
@@ -132,38 +147,41 @@ public class Schemas {
    * @return a struct schema for the headers
    */
   public static Schema forHeaders(Headers headers) {
-    final SchemaBuilder builder = SchemaBuilder.struct();
+    final SchemaBuilder builder = SchemaBuilder.struct().optional();
     if (headers != null) {
       final Map<String, List<Schema>> schemas = new HashMap<>();
       StreamSupport.stream(headers.spliterator(), false)
           .forEach(
               header ->
                   schemas
-                      .computeIfAbsent(header.key(), (k) -> new ArrayList<>())
+                      .computeIfAbsent(header.key(), k -> new ArrayList<>())
                       .add(header.schema()));
       schemas.forEach((key, value) -> builder.field(key, mergeSchemas(value)));
     }
     return builder.build();
   }
 
-  private static Schema mergeSchemas(List<Schema> headers) {
-    Schema schema = null;
-    for (Schema headerSchema : headers) {
-      schema = mergeSchemas(schema, headerSchema);
-    }
-    return SchemaBuilder.array(schema).optional().build();
+  private static Schema mergeSchemas(@NonNull List<Schema> headers) {
+    return headers.stream()
+        .reduce(Schemas::mergeSchemas)
+        .map(SchemaBuilder::array)
+        .map(SchemaBuilder::optional)
+        .map(SchemaBuilder::build)
+        .orElseThrow(AssertionError::new);
   }
 
-  private static Schema mergeSchemas(Schema schema, @NonNull Schema addition) {
-    if (schema == null) {
-      return addition;
+  private static Schema mergeSchemas(@NonNull Schema schema, @NonNull Schema addition) {
+    if (schema.equals(addition)) {
+      return schema;
     }
+
     switch (addition.type()) {
       case FLOAT32:
       case FLOAT64:
         if (floatTypes.contains(schema.type())) {
           return Schema.OPTIONAL_FLOAT64_SCHEMA;
         }
+        break;
       case INT8:
       case INT16:
       case INT32:
@@ -171,10 +189,12 @@ public class Schemas {
         if (intTypes.contains(schema.type())) {
           return Schema.OPTIONAL_INT64_SCHEMA;
         }
+        break;
       case STRUCT:
         if (schema.type() == Schema.Type.STRUCT) {
           return mergeStructs(schema, addition);
         }
+        break;
       case MAP:
         if (schema.type() == Schema.Type.MAP) {
           return SchemaBuilder.map(
@@ -183,16 +203,22 @@ public class Schemas {
               .optional()
               .build();
         }
+        break;
       case ARRAY:
         if (schema.type() == Schema.Type.ARRAY) {
           return SchemaBuilder.array(mergeSchemas(schema.valueSchema(), addition.valueSchema()))
               .optional()
               .build();
         }
+        break;
       default:
         if (Objects.equals(schema.type(), addition.type())) {
-          return toBuilder(addition).optional().build();
+          return Optional.ofNullable(toBuilder(addition))
+              .map(SchemaBuilder::optional)
+              .map(SchemaBuilder::build)
+              .orElseThrow(() -> new DataException("Cannot derive builder for addition schema"));
         }
+        break;
     }
     throw new DataException(
         "Cannot merge incompatible schemas of type '"

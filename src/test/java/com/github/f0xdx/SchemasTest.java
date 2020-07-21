@@ -42,7 +42,7 @@ class SchemasTest {
   @Test
   void schemaOfNull() {
     assertTrue(
-        assertThrows(NullPointerException.class, () -> Schemas.schemaOf(null))
+        assertThrows(NullPointerException.class, () -> Schemas.schemaOf(null, false))
             .getMessage()
             .contains("record is marked non-null"));
   }
@@ -52,7 +52,7 @@ class SchemasTest {
   void schemaOf() {
     val record = new SinkRecord("topic", 0, STRING_SCHEMA, "key", BOOLEAN_SCHEMA, true, 0);
 
-    val actual = Schemas.schemaOf(record);
+    val actual = Schemas.schemaOf(record, false);
 
     assertAll(
         "schema of",
