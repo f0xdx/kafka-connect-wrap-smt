@@ -1,7 +1,7 @@
 import java.time.LocalDate
 
 group = "com.github.f0xdx"
-version = "0.1.0"
+version = "0.1.1"
 
 val junitVersion by extra("5.6.2")
 val kafkaVersion by extra("2.3.1")
@@ -10,8 +10,8 @@ val lombokVersion by extra("1.18.12")
 plugins {
   java
   jacoco
-  id("com.diffplug.gradle.spotless") version "3.28.0"
-  id("org.sonarqube") version "2.8"
+  id("com.diffplug.spotless") version "5.1.0"
+  id("org.sonarqube") version "3.0"
 }
 
 repositories {
