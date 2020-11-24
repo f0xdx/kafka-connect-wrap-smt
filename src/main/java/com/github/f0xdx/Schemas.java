@@ -15,18 +15,7 @@
  */
 package com.github.f0xdx;
 
-import static java.util.Collections.unmodifiableSet;
-
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 import java.util.function.Supplier;
 import java.util.stream.StreamSupport;
 import lombok.NonNull;
@@ -36,26 +25,16 @@ import org.apache.kafka.connect.data.ConnectSchema;
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
-import org.apache.kafka.connect.errors.DataException;
 import org.apache.kafka.connect.header.Headers;
 
 /** Helper class for {@link Schema} related tasks. */
 public class Schemas {
-  private static final Set<Schema.Type> floatTypes =
-      unmodifiableSet(new HashSet<>(Arrays.asList(Schema.Type.FLOAT32, Schema.Type.FLOAT64)));
-
-  private static final Set<Schema.Type> intTypes =
-      unmodifiableSet(
-          new HashSet<>(
-              Arrays.asList(
-                  Schema.Type.INT8, Schema.Type.INT16, Schema.Type.INT32, Schema.Type.INT64)));
-
   /** Wrapper class for unique combinations of schemas. */
   @Value(staticConstructor = "of")
-  public static class KeyValueSchema {
+  public static class SchemaCacheKey {
     Schema key;
     Schema value;
-    Schema headers;
+    Map<String, List<Schema>> headers;
   }
 
   private Schemas() {
@@ -63,19 +42,25 @@ public class Schemas {
   }
 
   /**
-   * Extract a {@link KeyValueSchema} from a provided record of type {@link R}.
+   * Extract a {@link SchemaCacheKey} from a provided record of type {@link R}.
    *
    * @param record the record of type {@link R}
    * @param includeHeaders whether to include headers into the schema
    * @param <R> a type extending {@link ConnectRecord}
-   * @return the {@link KeyValueSchema} wrapper
+   * @return the {@link SchemaCacheKey} wrapper
    */
-  public static <R extends ConnectRecord<R>> KeyValueSchema schemaOf(
+  public static <R extends ConnectRecord<R>> SchemaCacheKey cacheKey(
       @NonNull R record, boolean includeHeaders) {
-    return KeyValueSchema.of(
+    return SchemaCacheKey.of(
         record.keySchema(),
         record.valueSchema(),
-        includeHeaders ? forHeaders(record.headers()) : null);
+        includeHeaders ? cacheKey(record.headers()) : null);
+  }
+
+  public static Map<String, List<Schema>> cacheKey(Headers headers) {
+    final Map<String, List<Schema>> key = new HashMap<>();
+    headers.forEach(h -> key.computeIfAbsent(h.key(), k -> new ArrayList<>()).add(h.schema()));
+    return key;
   }
 
   public static Schema optionalSchemaOrElse(Schema schema, @NonNull Supplier<Schema> alternative) {
@@ -156,93 +141,8 @@ public class Schemas {
                   schemas
                       .computeIfAbsent(header.key(), k -> new ArrayList<>())
                       .add(header.schema()));
-      schemas.forEach((key, value) -> builder.field(key, mergeSchemas(value)));
+      schemas.forEach((key, value) -> builder.field(key, Merger.mergeHeaderSchemas(value)));
     }
     return builder.build();
-  }
-
-  private static Schema mergeSchemas(@NonNull List<Schema> headers) {
-    return headers.stream()
-        .reduce(Schemas::mergeSchemas)
-        .map(SchemaBuilder::array)
-        .map(SchemaBuilder::optional)
-        .map(SchemaBuilder::build)
-        .orElseThrow(AssertionError::new);
-  }
-
-  private static Schema mergeSchemas(@NonNull Schema schema, @NonNull Schema addition) {
-    if (schema.equals(addition)) {
-      return schema;
-    }
-
-    switch (addition.type()) {
-      case FLOAT32:
-      case FLOAT64:
-        if (floatTypes.contains(schema.type())) {
-          return Schema.OPTIONAL_FLOAT64_SCHEMA;
-        }
-        break;
-      case INT8:
-      case INT16:
-      case INT32:
-      case INT64:
-        if (intTypes.contains(schema.type())) {
-          return Schema.OPTIONAL_INT64_SCHEMA;
-        }
-        break;
-      case STRUCT:
-        if (schema.type() == Schema.Type.STRUCT) {
-          return mergeStructs(schema, addition);
-        }
-        break;
-      case MAP:
-        if (schema.type() == Schema.Type.MAP) {
-          return SchemaBuilder.map(
-                  mergeSchemas(schema.keySchema(), addition.keySchema()),
-                  mergeSchemas(schema.valueSchema(), addition.valueSchema()))
-              .optional()
-              .build();
-        }
-        break;
-      case ARRAY:
-        if (schema.type() == Schema.Type.ARRAY) {
-          return SchemaBuilder.array(mergeSchemas(schema.valueSchema(), addition.valueSchema()))
-              .optional()
-              .build();
-        }
-        break;
-      default:
-        if (Objects.equals(schema.type(), addition.type())) {
-          return Optional.ofNullable(toBuilder(addition))
-              .map(SchemaBuilder::optional)
-              .map(SchemaBuilder::build)
-              .orElseThrow(() -> new DataException("Cannot derive builder for addition schema"));
-        }
-        break;
-    }
-    throw new DataException(
-        "Cannot merge incompatible schemas of type '"
-            + schema.type().getName()
-            + "' and '"
-            + addition.type().getName()
-            + "'.");
-  }
-
-  private static Schema mergeStructs(@NonNull Schema a, @NonNull Schema b) {
-    SchemaBuilder builder = SchemaBuilder.struct();
-    applyStructToBuilder(builder, a);
-    applyStructToBuilder(builder, b);
-    return builder.optional().build();
-  }
-
-  private static void applyStructToBuilder(@NonNull SchemaBuilder builder, @NonNull Schema schema) {
-    for (Field field : schema.fields()) {
-      Field existingField = builder.field(field.name());
-      if (existingField != null) {
-        builder.field(field.name(), mergeSchemas(existingField.schema(), field.schema()));
-      } else {
-        builder.field(field.name(), field.schema());
-      }
-    }
   }
 }

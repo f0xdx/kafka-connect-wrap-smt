@@ -15,18 +15,11 @@
  */
 package com.github.f0xdx;
 
-import static org.apache.kafka.connect.data.Schema.BOOLEAN_SCHEMA;
-import static org.apache.kafka.connect.data.Schema.INT32_SCHEMA;
-import static org.apache.kafka.connect.data.Schema.OPTIONAL_STRING_SCHEMA;
-import static org.apache.kafka.connect.data.Schema.STRING_SCHEMA;
-import static org.junit.jupiter.api.Assertions.assertAll;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.apache.kafka.connect.data.Schema.*;
+import static org.junit.jupiter.api.Assertions.*;
 
 import lombok.val;
-import org.apache.kafka.connect.data.Schema.Type;
+import org.apache.kafka.connect.data.Schema.*;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.sink.SinkRecord;
 import org.junit.jupiter.api.DisplayName;
@@ -37,22 +30,22 @@ import org.junit.jupiter.params.provider.EnumSource.Mode;
 
 class SchemasTest {
 
-  @DisplayName("key/value schema of (null value)")
+  @DisplayName("cacheKey of (null value)")
   @SuppressWarnings("ConstantConditions")
   @Test
-  void schemaOfNull() {
+  void cacheKeyNull() {
     assertTrue(
-        assertThrows(NullPointerException.class, () -> Schemas.schemaOf(null, false))
+        assertThrows(NullPointerException.class, () -> Schemas.cacheKey(null, false))
             .getMessage()
             .contains("record is marked non-null"));
   }
 
-  @DisplayName("key/value schema of")
+  @DisplayName("cacheKey of")
   @Test
-  void schemaOf() {
+  void cacheKey() {
     val record = new SinkRecord("topic", 0, STRING_SCHEMA, "key", BOOLEAN_SCHEMA, true, 0);
 
-    val actual = Schemas.schemaOf(record, false);
+    val actual = Schemas.cacheKey(record, false);
 
     assertAll(
         "schema of",

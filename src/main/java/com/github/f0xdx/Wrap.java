@@ -15,13 +15,13 @@
  */
 package com.github.f0xdx;
 
+import static com.github.f0xdx.Schemas.cacheKey;
 import static com.github.f0xdx.Schemas.optionalSchemaOrElse;
-import static com.github.f0xdx.Schemas.schemaOf;
 import static org.apache.kafka.connect.data.Schema.OPTIONAL_STRING_SCHEMA;
 import static org.apache.kafka.connect.data.SchemaProjector.project;
 import static org.apache.kafka.connect.transforms.util.Requirements.requireSinkRecord;
 
-import com.github.f0xdx.Schemas.KeyValueSchema;
+import com.github.f0xdx.Schemas.SchemaCacheKey;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -79,7 +79,7 @@ public class Wrap<R extends ConnectRecord<R>> implements Transformation<R> {
   static final String HEADERS = "headers";
 
   private volatile boolean includeHeaders;
-  private Cache<KeyValueSchema, Schema> schemaUpdateCache;
+  private Cache<SchemaCacheKey, Schema> schemaUpdateCache;
   private Cache<String, Schema> topicSchemaCache;
 
   /**
@@ -89,7 +89,7 @@ public class Wrap<R extends ConnectRecord<R>> implements Transformation<R> {
    * @return the {@link Schema} for wrapped records
    */
   synchronized Schema getSchema(@NonNull R record) {
-    val keyValueSchema = schemaOf(record, includeHeaders);
+    val keyValueSchema = cacheKey(record, includeHeaders);
     var schema = schemaUpdateCache.get(keyValueSchema);
 
     if (schema == null) { // cache miss
@@ -107,7 +107,7 @@ public class Wrap<R extends ConnectRecord<R>> implements Transformation<R> {
               .field(
                   VALUE,
                   optionalSchemaOrElse(
-                      record.valueSchema(), () -> this.lastKeySchema(record.topic())));
+                      record.valueSchema(), () -> this.lastValueSchema(record.topic())));
 
       if (includeHeaders) {
         builder.field(HEADERS, Schemas.forHeaders(record.headers()));
