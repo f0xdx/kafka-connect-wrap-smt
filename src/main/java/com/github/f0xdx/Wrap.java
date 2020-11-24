@@ -35,6 +35,7 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.DataException;
+import org.apache.kafka.connect.sink.SinkRecord;
 import org.apache.kafka.connect.transforms.Transformation;
 import org.apache.kafka.connect.transforms.util.SimpleConfig;
 
@@ -89,11 +90,11 @@ public class Wrap<R extends ConnectRecord<R>> implements Transformation<R> {
    * @return the {@link Schema} for wrapped records
    */
   synchronized Schema getSchema(@NonNull R record) {
-    val keyValueSchema = cacheKey(record, includeHeaders);
-    var schema = schemaUpdateCache.get(keyValueSchema);
+    final SchemaCacheKey keyValueSchema = cacheKey(record, includeHeaders);
+    Schema schema = schemaUpdateCache.get(keyValueSchema);
 
     if (schema == null) { // cache miss
-      val builder =
+      SchemaBuilder builder =
           SchemaBuilder.struct()
               .field(TOPIC, Schema.STRING_SCHEMA)
               .field(PARTITION, Schema.INT32_SCHEMA)
@@ -141,9 +142,8 @@ public class Wrap<R extends ConnectRecord<R>> implements Transformation<R> {
    * @return a new record of type {@link R} that wraps Key / Value and Meta-data
    */
   R applyWithoutSchema(@NonNull R record) {
-
-    val sinkRecord = requireSinkRecord(record, PURPOSE);
-    val result = new HashMap<String, Object>(8);
+    final SinkRecord sinkRecord = requireSinkRecord(record, PURPOSE);
+    final HashMap<String, Object> result = new HashMap<>(8);
 
     result.put(TOPIC, sinkRecord.topic());
     result.put(PARTITION, sinkRecord.kafkaPartition());
@@ -167,9 +167,9 @@ public class Wrap<R extends ConnectRecord<R>> implements Transformation<R> {
    * @return a new record of type {@link R} that wraps Key / Value and Meta-data
    */
   R applyWithSchema(@NonNull R record) {
-    val sinkRecord = requireSinkRecord(record, PURPOSE);
-    val schema = getSchema(record);
-    val result =
+    final SinkRecord sinkRecord = requireSinkRecord(record, PURPOSE);
+    final Schema schema = getSchema(record);
+    final Struct result =
         new Struct(schema)
             .put(TOPIC, sinkRecord.topic())
             .put(PARTITION, sinkRecord.kafkaPartition())
@@ -209,7 +209,6 @@ public class Wrap<R extends ConnectRecord<R>> implements Transformation<R> {
    */
   @Override
   public R apply(R record) {
-
     if (record != null) {
       if ((record.keySchema() != null || record.key() == null)
           && (record.valueSchema() != null || record.value() == null)) {
@@ -244,7 +243,7 @@ public class Wrap<R extends ConnectRecord<R>> implements Transformation<R> {
    */
   @Override
   public void configure(Map<String, ?> configs) {
-    val config = new SimpleConfig(CONFIG_DEF, configs);
+    final SimpleConfig config = new SimpleConfig(CONFIG_DEF, configs);
     includeHeaders = config.getBoolean(INCLUDE_HEADERS_CONFIG);
 
     schemaUpdateCache = new SynchronizedCache<>(new LRUCache<>(16));

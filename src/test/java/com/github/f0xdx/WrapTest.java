@@ -256,7 +256,7 @@ class WrapTest {
         () -> assertNotNull(res.field(TIMESTAMP_TYPE)),
         () -> assertNotNull(res.field(KEY)),
         () -> assertNotNull(res.field(VALUE)),
-        () -> assertNotNull(res.field(HEADERS)),
+        () -> assertNull(res.field(HEADERS)),
         () -> assertEquals(SchemaBuilder.string().optional().build(), res.field(KEY).schema()),
         () -> assertEquals(toBuilder(valueSchema).optional().build(), res.field(VALUE).schema()));
   }
@@ -330,7 +330,7 @@ class WrapTest {
         () -> assertNotNull(res.field(TIMESTAMP_TYPE)),
         () -> assertNotNull(res.field(KEY)),
         () -> assertNotNull(res.field(VALUE)),
-        () -> assertNotNull(res.field(HEADERS)),
+        () -> assertNull(res.field(HEADERS)),
         () -> assertEquals(SchemaBuilder.string().optional().build(), res.field(KEY).schema()),
         () -> assertEquals(toBuilder(valueSchema).optional().build(), res.field(VALUE).schema()));
 
