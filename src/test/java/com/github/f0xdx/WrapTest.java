@@ -15,6 +15,18 @@
  */
 package com.github.f0xdx;
 
+import static com.github.f0xdx.Schemas.toBuilder;
+import static com.github.f0xdx.Wrap.*;
+import static org.apache.kafka.common.record.TimestampType.CREATE_TIME;
+import static org.apache.kafka.connect.data.Schema.*;
+import static org.apache.kafka.connect.data.Schema.Type.INT32;
+import static org.apache.kafka.connect.data.Schema.Type.STRUCT;
+import static org.junit.jupiter.api.Assertions.*;
+
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 import lombok.val;
 import org.apache.kafka.common.record.TimestampType;
 import org.apache.kafka.connect.data.Schema;
@@ -27,19 +39,6 @@ import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
-
-import static com.github.f0xdx.Schemas.toBuilder;
-import static com.github.f0xdx.Wrap.*;
-import static org.apache.kafka.common.record.TimestampType.CREATE_TIME;
-import static org.apache.kafka.connect.data.Schema.*;
-import static org.apache.kafka.connect.data.Schema.Type.INT32;
-import static org.apache.kafka.connect.data.Schema.Type.STRUCT;
-import static org.junit.jupiter.api.Assertions.*;
 
 class WrapTest {
   private static final String TOPIC_VAL = "topic";
@@ -171,31 +170,31 @@ class WrapTest {
                 transformedValue.getStruct("value")));
   }
 
-
   @DisplayName("apply w/ schema and headers")
   @Test
   void applyWithSchemaHeaders() {
     transform.configure(includeHeadersConfig);
-    val valueSchema =
-            SchemaBuilder.struct().field("first", OPTIONAL_STRING_SCHEMA).build();
+    val valueSchema = SchemaBuilder.struct().field("first", OPTIONAL_STRING_SCHEMA).build();
     val value = new Struct(valueSchema);
     val res = applyRecord(STRING_SCHEMA, "key", valueSchema, value);
 
     assertAll(
-            "transformed record",
-            () -> assertNotNull(res.keySchema()),
-            () -> assertNotNull(res.key()),
-            () -> assertEquals("key", res.key()));
+        "transformed record",
+        () -> assertNotNull(res.keySchema()),
+        () -> assertNotNull(res.key()),
+        () -> assertEquals("key", res.key()));
 
     val transformedValue = assertCommonStruct(res);
 
-    Schema headerSchema = SchemaBuilder.struct()
+    Schema headerSchema =
+        SchemaBuilder.struct()
             .field("a", SchemaBuilder.array(STRING_SCHEMA).optional().build())
             .field("b", SchemaBuilder.array(OPTIONAL_INT32_SCHEMA).optional().build())
             .optional()
             .build();
 
-    Struct expectedHeaders = new Struct(headerSchema)
+    Struct expectedHeaders =
+        new Struct(headerSchema)
             .put("a", Collections.singletonList("a"))
             .put("b", Arrays.asList(1, 2));
 

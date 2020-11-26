@@ -15,7 +15,15 @@
  */
 package com.github.f0xdx;
 
+import static com.github.f0xdx.Schemas.cacheKey;
+import static com.github.f0xdx.Schemas.optionalSchemaOrElse;
+import static org.apache.kafka.connect.data.Schema.OPTIONAL_STRING_SCHEMA;
+import static org.apache.kafka.connect.data.SchemaProjector.project;
+import static org.apache.kafka.connect.transforms.util.Requirements.requireSinkRecord;
+
 import com.github.f0xdx.Schemas.SchemaCacheKey;
+import java.util.*;
+import java.util.stream.StreamSupport;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NonNull;
@@ -32,15 +40,6 @@ import org.apache.kafka.connect.header.Header;
 import org.apache.kafka.connect.sink.SinkRecord;
 import org.apache.kafka.connect.transforms.Transformation;
 import org.apache.kafka.connect.transforms.util.SimpleConfig;
-
-import java.util.*;
-import java.util.stream.StreamSupport;
-
-import static com.github.f0xdx.Schemas.cacheKey;
-import static com.github.f0xdx.Schemas.optionalSchemaOrElse;
-import static org.apache.kafka.connect.data.Schema.OPTIONAL_STRING_SCHEMA;
-import static org.apache.kafka.connect.data.SchemaProjector.project;
-import static org.apache.kafka.connect.transforms.util.Requirements.requireSinkRecord;
 
 /**
  * Single message transformation (SMT) that wraps key, value and meta-data (partition, offset,
