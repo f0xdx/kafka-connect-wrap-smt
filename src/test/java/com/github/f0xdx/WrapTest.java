@@ -15,6 +15,24 @@
  */
 package com.github.f0xdx;
 
+import lombok.val;
+import org.apache.kafka.common.record.TimestampType;
+import org.apache.kafka.connect.data.Schema;
+import org.apache.kafka.connect.data.SchemaBuilder;
+import org.apache.kafka.connect.data.Struct;
+import org.apache.kafka.connect.errors.DataException;
+import org.apache.kafka.connect.header.ConnectHeaders;
+import org.apache.kafka.connect.sink.SinkRecord;
+import org.apache.kafka.connect.source.SourceRecord;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
+
 import static com.github.f0xdx.Schemas.toBuilder;
 import static com.github.f0xdx.Wrap.*;
 import static org.apache.kafka.common.record.TimestampType.CREATE_TIME;
@@ -23,26 +41,15 @@ import static org.apache.kafka.connect.data.Schema.Type.INT32;
 import static org.apache.kafka.connect.data.Schema.Type.STRUCT;
 import static org.junit.jupiter.api.Assertions.*;
 
-import java.util.Collections;
-import java.util.Map;
-import lombok.val;
-import org.apache.kafka.common.record.TimestampType;
-import org.apache.kafka.connect.data.Schema;
-import org.apache.kafka.connect.data.SchemaBuilder;
-import org.apache.kafka.connect.data.Struct;
-import org.apache.kafka.connect.errors.DataException;
-import org.apache.kafka.connect.sink.SinkRecord;
-import org.apache.kafka.connect.source.SourceRecord;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-
 class WrapTest {
   private static final String TOPIC_VAL = "topic";
   private static final Integer PARTITION_VAL = 0;
   private static final Long OFFSET_VAL = 1L;
   private static final TimestampType TIMESTAMP_TYPE_VAL = CREATE_TIME;
   private static final Long TIMESTAMP_VAL = 123456789L;
+
+  private static Map<String, Object> includeHeadersConfig =
+      Collections.singletonMap(INCLUDE_HEADERS_CONFIG, true);
 
   Wrap<SinkRecord> transform;
 
@@ -98,6 +105,24 @@ class WrapTest {
         () -> assertEquals(42, value.get("value")));
   }
 
+  @DisplayName("apply w/o schema and headers")
+  @Test
+  void applyWithoutSchemaHeaders() {
+    transform.configure(includeHeadersConfig);
+    val res = applyRecord(null, "key", null, 42);
+
+    assertAll(
+        "transformed record", () -> assertNotNull(res.key()), () -> assertEquals("key", res.key()));
+
+    val value = assertCommonMap(res);
+
+    val expectedHeaders = new HashMap<String, Object>();
+    expectedHeaders.put("a", Collections.singletonList("a"));
+    expectedHeaders.put("b", Arrays.asList((short) 1, 2));
+
+    assertEquals(expectedHeaders, value.get(HEADERS));
+  }
+
   @DisplayName("apply w/ schema (null key)")
   @Test
   void applyNullKeyWithSchema() {
@@ -144,6 +169,37 @@ class WrapTest {
                     .put("first", "first")
                     .put("second", 2),
                 transformedValue.getStruct("value")));
+  }
+
+
+  @DisplayName("apply w/ schema and headers")
+  @Test
+  void applyWithSchemaHeaders() {
+    transform.configure(includeHeadersConfig);
+    val valueSchema =
+            SchemaBuilder.struct().field("first", OPTIONAL_STRING_SCHEMA).build();
+    val value = new Struct(valueSchema);
+    val res = applyRecord(STRING_SCHEMA, "key", valueSchema, value);
+
+    assertAll(
+            "transformed record",
+            () -> assertNotNull(res.keySchema()),
+            () -> assertNotNull(res.key()),
+            () -> assertEquals("key", res.key()));
+
+    val transformedValue = assertCommonStruct(res);
+
+    Schema headerSchema = SchemaBuilder.struct()
+            .field("a", SchemaBuilder.array(STRING_SCHEMA).optional().build())
+            .field("b", SchemaBuilder.array(OPTIONAL_INT32_SCHEMA).optional().build())
+            .optional()
+            .build();
+
+    Struct expectedHeaders = new Struct(headerSchema)
+            .put("a", Collections.singletonList("a"))
+            .put("b", Arrays.asList(1, 2));
+
+    assertEquals(expectedHeaders, transformedValue.getStruct(HEADERS));
   }
 
   @DisplayName("apply with value schema only")
@@ -237,6 +293,30 @@ class WrapTest {
     val res = transform.getSchema(record);
     assertCommonSchema(
         res, SchemaBuilder.string().optional().build(), toBuilder(valueSchema).optional().build());
+    assertNull(res.field(HEADERS));
+  }
+
+  @DisplayName("get schema with headers")
+  @Test
+  void getSchemaHeaders() {
+    transform.configure(includeHeadersConfig);
+    val valueSchema =
+        SchemaBuilder.struct().field("first", STRING_SCHEMA).field("second", INT32_SCHEMA).build();
+    val value = new Struct(valueSchema).put("first", "first").put("second", 2);
+    val record = newRecord(STRING_SCHEMA, "key", valueSchema, value);
+
+    val res = transform.getSchema(record);
+    assertCommonSchema(
+        res, SchemaBuilder.string().optional().build(), toBuilder(valueSchema).optional().build());
+    assertNotNull(res.field(HEADERS));
+
+    Schema expectedHeaderSchema =
+        SchemaBuilder.struct()
+            .field("a", SchemaBuilder.array(STRING_SCHEMA).optional().build())
+            .field("b", SchemaBuilder.array(OPTIONAL_INT32_SCHEMA).optional().build())
+            .optional()
+            .build();
+    assertEquals(expectedHeaderSchema, res.field(HEADERS).schema());
   }
 
   @DisplayName("get schema from cache (hit)")
@@ -254,7 +334,11 @@ class WrapTest {
 
     assertCommonSchema(
         res, SchemaBuilder.string().optional().build(), toBuilder(valueSchema).optional().build());
-    assertAll("obtained schema (on hit)", () -> assertNotNull(res2), () -> assertSame(res, res2));
+    assertAll(
+        "obtained schema (on hit)",
+        () -> assertNull(res.field(HEADERS)),
+        () -> assertNotNull(res2),
+        () -> assertSame(res, res2));
   }
 
   @DisplayName("obtain last key schema (no last schema)")
@@ -324,7 +408,7 @@ class WrapTest {
   @Test
   void testConfigure() {
     val transform = new Wrap<SinkRecord>();
-    transform.configure(Collections.singletonMap(INCLUDE_HEADERS_CONFIG, true));
+    transform.configure(includeHeadersConfig);
 
     assertAll(
         "configuration with headers",
@@ -350,6 +434,10 @@ class WrapTest {
   }
 
   private SinkRecord newRecord(Schema keySchema, Object key, Schema valueSchema, Object value) {
+    ConnectHeaders headers = new ConnectHeaders();
+    headers.addString("a", "a");
+    headers.addShort("b", (short) 1);
+    headers.addInt("b", 2);
     return new SinkRecord(
         TOPIC_VAL,
         PARTITION_VAL,
@@ -359,7 +447,8 @@ class WrapTest {
         value,
         OFFSET_VAL,
         TIMESTAMP_VAL,
-        TIMESTAMP_TYPE_VAL);
+        TIMESTAMP_TYPE_VAL,
+        headers);
   }
 
   private SinkRecord applyRecord(Schema keySchema, Object key, Schema valueSchema, Object value) {
@@ -426,7 +515,6 @@ class WrapTest {
         () -> assertNotNull(schema.field(TIMESTAMP_TYPE)),
         () -> assertNotNull(schema.field(KEY)),
         () -> assertNotNull(schema.field(VALUE)),
-        () -> assertNull(schema.field(HEADERS)),
         () -> assertEquals(keySchema, schema.field(KEY).schema()),
         () -> assertEquals(valueSchema, schema.field(VALUE).schema()),
         () -> schema.fields().forEach(field -> assertFalse(field.name().contains("."))));

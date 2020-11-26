@@ -15,15 +15,16 @@
  */
 package com.github.f0xdx;
 
-import static com.github.f0xdx.Schemas.toBuilder;
-
-import java.util.*;
 import lombok.NonNull;
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Schema.Type;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.errors.DataException;
+
+import java.util.*;
+
+import static com.github.f0xdx.Schemas.toBuilder;
 
 /** Helper class to merge different schemas together. */
 public class Merger {
@@ -120,18 +121,21 @@ public class Merger {
 
   private static Schema mergeStructs(@NonNull Schema a, @NonNull Schema b) {
     SchemaBuilder builder = SchemaBuilder.struct();
-    applyStructToBuilder(builder, a);
-    applyStructToBuilder(builder, b);
+    Map<String, Schema> fields = new HashMap<>();
+    applyStructToBuilder(fields, a);
+    applyStructToBuilder(fields, b);
+    fields.forEach(builder::field);
     return builder.optional().build();
   }
 
-  private static void applyStructToBuilder(@NonNull SchemaBuilder builder, @NonNull Schema schema) {
+  private static void applyStructToBuilder(
+      @NonNull Map<String, Schema> fields, @NonNull Schema schema) {
     for (Field field : schema.fields()) {
-      Field existingField = builder.field(field.name());
-      if (existingField != null) {
-        builder.field(field.name(), mergeSchemas(existingField.schema(), field.schema()));
+      Schema existing = fields.get(field.name());
+      if (existing != null) {
+        fields.put(field.name(), mergeSchemas(existing, field.schema()));
       } else {
-        builder.field(field.name(), field.schema());
+        fields.put(field.name(), field.schema());
       }
     }
   }

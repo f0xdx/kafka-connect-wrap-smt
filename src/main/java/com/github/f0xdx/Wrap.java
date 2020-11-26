@@ -15,17 +15,10 @@
  */
 package com.github.f0xdx;
 
-import static com.github.f0xdx.Schemas.cacheKey;
-import static com.github.f0xdx.Schemas.optionalSchemaOrElse;
-import static org.apache.kafka.connect.data.Schema.OPTIONAL_STRING_SCHEMA;
-import static org.apache.kafka.connect.data.SchemaProjector.project;
-import static org.apache.kafka.connect.transforms.util.Requirements.requireSinkRecord;
-
 import com.github.f0xdx.Schemas.SchemaCacheKey;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Optional;
-import lombok.*;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NonNull;
 import org.apache.kafka.common.cache.Cache;
 import org.apache.kafka.common.cache.LRUCache;
 import org.apache.kafka.common.cache.SynchronizedCache;
@@ -35,9 +28,19 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.DataException;
+import org.apache.kafka.connect.header.Header;
 import org.apache.kafka.connect.sink.SinkRecord;
 import org.apache.kafka.connect.transforms.Transformation;
 import org.apache.kafka.connect.transforms.util.SimpleConfig;
+
+import java.util.*;
+import java.util.stream.StreamSupport;
+
+import static com.github.f0xdx.Schemas.cacheKey;
+import static com.github.f0xdx.Schemas.optionalSchemaOrElse;
+import static org.apache.kafka.connect.data.Schema.OPTIONAL_STRING_SCHEMA;
+import static org.apache.kafka.connect.data.SchemaProjector.project;
+import static org.apache.kafka.connect.transforms.util.Requirements.requireSinkRecord;
 
 /**
  * Single message transformation (SMT) that wraps key, value and meta-data (partition, offset,
@@ -153,11 +156,26 @@ public class Wrap<R extends ConnectRecord<R>> implements Transformation<R> {
     result.put(KEY, sinkRecord.key());
     result.put(VALUE, sinkRecord.value());
 
-    if (includeHeaders) {
-      result.put(HEADERS, sinkRecord.headers());
+    if (includeHeaders && sinkRecord.headers() != null) {
+      result.put(HEADERS, mapHeadersWithoutSchema(sinkRecord.headers()));
     }
 
     return newRecord(record, null, result);
+  }
+
+  /**
+   * Maps record headers to the target struct while keeping order.
+   *
+   * @param headers the headers to map
+   * @return a map of arrays
+   */
+  private Map<String, List<Object>> mapHeadersWithoutSchema(Iterable<Header> headers) {
+    final Map<String, List<Object>> result = new HashMap<>();
+    StreamSupport.stream(headers.spliterator(), false)
+        .forEach(
+            header ->
+                result.computeIfAbsent(header.key(), k -> new ArrayList<>()).add(header.value()));
+    return result;
   }
 
   /**
@@ -194,11 +212,34 @@ public class Wrap<R extends ConnectRecord<R>> implements Transformation<R> {
       result.put(VALUE, null);
     }
 
-    if (includeHeaders) {
-      result.put(HEADERS, sinkRecord.headers());
+    if (includeHeaders && sinkRecord.headers() != null) {
+      result.put(
+          HEADERS, mapHeadersWithSchema(sinkRecord.headers(), schema.field(HEADERS).schema()));
     }
 
     return newRecord(record, schema, result);
+  }
+
+  /**
+   * Maps the headers to a target struct with the calculated schema and projects the header values.
+   *
+   * @param headers the headers to map
+   * @param schema the header schema
+   * @return a struct of arrays
+   */
+  private Struct mapHeadersWithSchema(Iterable<Header> headers, Schema schema) {
+    final Struct result = new Struct(schema);
+    final Map<String, List<Object>> fields = new HashMap<>();
+    StreamSupport.stream(headers.spliterator(), false)
+        .forEach(
+            header -> {
+              Schema targetSchema = schema.field(header.key()).schema().valueSchema();
+              fields
+                  .computeIfAbsent(header.key(), k -> new ArrayList<>())
+                  .add(project(header.schema(), header.value(), targetSchema));
+            });
+    fields.forEach(result::put);
+    return result;
   }
 
   /**

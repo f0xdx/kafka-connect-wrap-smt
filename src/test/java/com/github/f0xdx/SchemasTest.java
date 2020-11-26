@@ -18,9 +18,13 @@ package com.github.f0xdx;
 import static org.apache.kafka.connect.data.Schema.*;
 import static org.junit.jupiter.api.Assertions.*;
 
+import java.util.*;
 import lombok.val;
+import org.apache.kafka.common.record.TimestampType;
+import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Schema.*;
 import org.apache.kafka.connect.data.SchemaBuilder;
+import org.apache.kafka.connect.header.ConnectHeaders;
 import org.apache.kafka.connect.sink.SinkRecord;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -51,6 +55,33 @@ class SchemasTest {
         "schema of",
         () -> assertEquals(STRING_SCHEMA, actual.getKey()),
         () -> assertEquals(BOOLEAN_SCHEMA, actual.getValue()));
+  }
+
+  @DisplayName("cacheKey with headers")
+  @Test
+  void cacheKeyHeader() {
+    val headers = new ConnectHeaders();
+    headers.addString("a", "1");
+    headers.addString("a", "2");
+    headers.addString("b", "1");
+    val record =
+        new SinkRecord(
+            "topic",
+            0,
+            STRING_SCHEMA,
+            "key",
+            BOOLEAN_SCHEMA,
+            true,
+            0,
+            null,
+            TimestampType.NO_TIMESTAMP_TYPE,
+            headers);
+
+    val actual = Schemas.cacheKey(record, true);
+    Map<String, List<Schema>> expected = new HashMap<>();
+    expected.put("a", Arrays.asList(STRING_SCHEMA, STRING_SCHEMA));
+    expected.put("b", Collections.singletonList(STRING_SCHEMA));
+    assertEquals(expected, actual.getHeaders());
   }
 
   @DisplayName("derive optional schema")
@@ -170,5 +201,24 @@ class SchemasTest {
         () -> assertEquals(schema.parameters().size(), result.build().parameters().size()),
         () -> assertTrue(result.build().parameters().containsKey("connect.doc")),
         () -> assertEquals("documentation here", result.build().parameters().get("connect.doc")));
+  }
+
+  @Test
+  @DisplayName("schema for headers")
+  void schemaForHeaders() {
+    val headers = new ConnectHeaders();
+    headers.addString("a", "1");
+    headers.addString("a", "2");
+    headers.addShort("b", (short) 1);
+    headers.addInt("b", 1);
+    val expected =
+        SchemaBuilder.struct()
+            .field("a", SchemaBuilder.array(STRING_SCHEMA).optional().build())
+            .field("b", SchemaBuilder.array(OPTIONAL_INT32_SCHEMA).optional().build())
+            .optional()
+            .build();
+
+    val result = Schemas.forHeaders(headers);
+    assertEquals(expected, result);
   }
 }
