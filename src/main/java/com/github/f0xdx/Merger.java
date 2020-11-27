@@ -15,9 +15,6 @@
  */
 package com.github.f0xdx;
 
-import static com.github.f0xdx.Schemas.toBuilder;
-
-import java.util.*;
 import lombok.NonNull;
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
@@ -25,8 +22,12 @@ import org.apache.kafka.connect.data.Schema.Type;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.errors.DataException;
 
+import java.util.*;
+
+import static com.github.f0xdx.Schemas.toBuilder;
+
 /** Helper class to merge different schemas together. */
-public class Merger {
+class Merger {
   private static final Map<Type, Map<Type, Schema>> mergeMap = new HashMap<>();
 
   /*
@@ -60,7 +61,7 @@ public class Merger {
 
   private Merger() {}
 
-  public static Schema mergeHeaderSchemas(@NonNull List<Schema> headers) {
+  static Schema mergeHeaderSchemas(@NonNull List<Schema> headers) {
     return headers.stream()
         .reduce(Merger::mergeSchemas)
         .map(SchemaBuilder::array)
@@ -69,7 +70,7 @@ public class Merger {
         .orElseThrow(AssertionError::new);
   }
 
-  public static Schema mergeSchemas(@NonNull Schema schema, @NonNull Schema addition) {
+  static Schema mergeSchemas(@NonNull Schema schema, @NonNull Schema addition) {
     if (schema.equals(addition)) {
       return schema;
     }
@@ -119,8 +120,8 @@ public class Merger {
   }
 
   private static Schema mergeStructs(@NonNull Schema a, @NonNull Schema b) {
-    SchemaBuilder builder = SchemaBuilder.struct();
-    Map<String, Schema> fields = new HashMap<>();
+    final SchemaBuilder builder = SchemaBuilder.struct();
+    final Map<String, Schema> fields = new HashMap<>();
     applyStructToBuilder(fields, a);
     applyStructToBuilder(fields, b);
     fields.forEach(builder::field);
@@ -130,7 +131,7 @@ public class Merger {
   private static void applyStructToBuilder(
       @NonNull Map<String, Schema> fields, @NonNull Schema schema) {
     for (Field field : schema.fields()) {
-      Schema existing = fields.get(field.name());
+      final Schema existing = fields.get(field.name());
       if (existing != null) {
         fields.put(field.name(), mergeSchemas(existing, field.schema()));
       } else {

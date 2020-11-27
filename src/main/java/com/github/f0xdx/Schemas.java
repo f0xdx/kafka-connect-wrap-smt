@@ -15,9 +15,6 @@
  */
 package com.github.f0xdx;
 
-import java.util.*;
-import java.util.function.Supplier;
-import java.util.stream.StreamSupport;
 import lombok.NonNull;
 import lombok.Value;
 import org.apache.kafka.connect.connector.ConnectRecord;
@@ -27,8 +24,12 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.header.Headers;
 
+import java.util.*;
+import java.util.function.Supplier;
+import java.util.stream.StreamSupport;
+
 /** Helper class for {@link Schema} related tasks. */
-public class Schemas {
+class Schemas {
   /** Wrapper class for unique combinations of schemas. */
   @Value(staticConstructor = "of")
   public static class SchemaCacheKey {
@@ -49,7 +50,7 @@ public class Schemas {
    * @param <R> a type extending {@link ConnectRecord}
    * @return the {@link SchemaCacheKey} wrapper
    */
-  public static <R extends ConnectRecord<R>> SchemaCacheKey cacheKey(
+  static <R extends ConnectRecord<R>> SchemaCacheKey cacheKey(
       @NonNull R record, boolean includeHeaders) {
     return SchemaCacheKey.of(
         record.keySchema(),
@@ -57,13 +58,13 @@ public class Schemas {
         includeHeaders ? cacheKey(record.headers()) : null);
   }
 
-  public static Map<String, List<Schema>> cacheKey(Headers headers) {
+  static Map<String, List<Schema>> cacheKey(Headers headers) {
     final Map<String, List<Schema>> key = new HashMap<>();
     headers.forEach(h -> key.computeIfAbsent(h.key(), k -> new ArrayList<>()).add(h.schema()));
     return key;
   }
 
-  public static Schema optionalSchemaOrElse(Schema schema, @NonNull Supplier<Schema> alternative) {
+  static Schema optionalSchemaOrElse(Schema schema, @NonNull Supplier<Schema> alternative) {
     return Optional.ofNullable(schema)
         .map(Schemas::toBuilder)
         .map(SchemaBuilder::optional)
@@ -78,7 +79,7 @@ public class Schemas {
    * @param schema the {@link Schema} to convert
    * @return the {@link SchemaBuilder}
    */
-  public static SchemaBuilder toBuilder(@NonNull Schema schema) {
+  static SchemaBuilder toBuilder(@NonNull Schema schema) {
     SchemaBuilder builder = null;
 
     // basic initialization based on type
@@ -131,7 +132,7 @@ public class Schemas {
    * @param headers the message headers (can be null)
    * @return a struct schema for the headers
    */
-  public static Schema forHeaders(Headers headers) {
+  static Schema forHeaders(Headers headers) {
     final SchemaBuilder builder = SchemaBuilder.struct().optional();
     if (headers != null) {
       final Map<String, List<Schema>> schemas = new HashMap<>();
