@@ -15,19 +15,16 @@
  */
 package com.github.f0xdx;
 
-import static org.apache.kafka.connect.data.Schema.BOOLEAN_SCHEMA;
-import static org.apache.kafka.connect.data.Schema.INT32_SCHEMA;
-import static org.apache.kafka.connect.data.Schema.OPTIONAL_STRING_SCHEMA;
-import static org.apache.kafka.connect.data.Schema.STRING_SCHEMA;
-import static org.junit.jupiter.api.Assertions.assertAll;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.apache.kafka.connect.data.Schema.*;
+import static org.junit.jupiter.api.Assertions.*;
 
+import java.util.*;
 import lombok.val;
-import org.apache.kafka.connect.data.Schema.Type;
+import org.apache.kafka.common.record.TimestampType;
+import org.apache.kafka.connect.data.Schema;
+import org.apache.kafka.connect.data.Schema.*;
 import org.apache.kafka.connect.data.SchemaBuilder;
+import org.apache.kafka.connect.header.ConnectHeaders;
 import org.apache.kafka.connect.sink.SinkRecord;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -37,27 +34,54 @@ import org.junit.jupiter.params.provider.EnumSource.Mode;
 
 class SchemasTest {
 
-  @DisplayName("key/value schema of (null value)")
+  @DisplayName("cacheKey of (null value)")
   @SuppressWarnings("ConstantConditions")
   @Test
-  void schemaOfNull() {
+  void cacheKeyNull() {
     assertTrue(
-        assertThrows(NullPointerException.class, () -> Schemas.schemaOf(null))
+        assertThrows(NullPointerException.class, () -> Schemas.cacheKey(null, false))
             .getMessage()
             .contains("record is marked non-null"));
   }
 
-  @DisplayName("key/value schema of")
+  @DisplayName("cacheKey of")
   @Test
-  void schemaOf() {
+  void cacheKey() {
     val record = new SinkRecord("topic", 0, STRING_SCHEMA, "key", BOOLEAN_SCHEMA, true, 0);
 
-    val actual = Schemas.schemaOf(record);
+    val actual = Schemas.cacheKey(record, false);
 
     assertAll(
         "schema of",
         () -> assertEquals(STRING_SCHEMA, actual.getKey()),
         () -> assertEquals(BOOLEAN_SCHEMA, actual.getValue()));
+  }
+
+  @DisplayName("cacheKey with headers")
+  @Test
+  void cacheKeyHeader() {
+    val headers = new ConnectHeaders();
+    headers.addString("a", "1");
+    headers.addString("a", "2");
+    headers.addString("b", "1");
+    val record =
+        new SinkRecord(
+            "topic",
+            0,
+            STRING_SCHEMA,
+            "key",
+            BOOLEAN_SCHEMA,
+            true,
+            0,
+            null,
+            TimestampType.NO_TIMESTAMP_TYPE,
+            headers);
+
+    val actual = Schemas.cacheKey(record, true);
+    Map<String, List<Schema>> expected = new HashMap<>();
+    expected.put("a", Arrays.asList(STRING_SCHEMA, STRING_SCHEMA));
+    expected.put("b", Collections.singletonList(STRING_SCHEMA));
+    assertEquals(expected, actual.getHeaders());
   }
 
   @DisplayName("derive optional schema")
@@ -177,5 +201,24 @@ class SchemasTest {
         () -> assertEquals(schema.parameters().size(), result.build().parameters().size()),
         () -> assertTrue(result.build().parameters().containsKey("connect.doc")),
         () -> assertEquals("documentation here", result.build().parameters().get("connect.doc")));
+  }
+
+  @Test
+  @DisplayName("schema for headers")
+  void schemaForHeaders() {
+    val headers = new ConnectHeaders();
+    headers.addString("a", "1");
+    headers.addString("a", "2");
+    headers.addShort("b", (short) 1);
+    headers.addInt("b", 1);
+    val expected =
+        SchemaBuilder.struct()
+            .field("a", SchemaBuilder.array(STRING_SCHEMA).optional().build())
+            .field("b", SchemaBuilder.array(OPTIONAL_INT32_SCHEMA).optional().build())
+            .optional()
+            .build();
+
+    val result = Schemas.forHeaders(headers);
+    assertEquals(expected, result);
   }
 }

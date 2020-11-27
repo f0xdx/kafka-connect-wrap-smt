@@ -15,10 +15,9 @@
  */
 package com.github.f0xdx;
 
-import java.util.Collections;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.function.Supplier;
+import java.util.stream.StreamSupport;
 import lombok.NonNull;
 import lombok.Value;
 import org.apache.kafka.connect.connector.ConnectRecord;
@@ -26,15 +25,16 @@ import org.apache.kafka.connect.data.ConnectSchema;
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
+import org.apache.kafka.connect.header.Headers;
 
 /** Helper class for {@link Schema} related tasks. */
-public class Schemas {
-
+class Schemas {
   /** Wrapper class for unique combinations of schemas. */
   @Value(staticConstructor = "of")
-  public static class KeyValueSchema {
+  public static class SchemaCacheKey {
     Schema key;
     Schema value;
+    Map<String, List<Schema>> headers;
   }
 
   private Schemas() {
@@ -42,17 +42,28 @@ public class Schemas {
   }
 
   /**
-   * Extract a {@link KeyValueSchema} from a provided record of type {@link R}.
+   * Extract a {@link SchemaCacheKey} from a provided record of type {@link R}.
    *
    * @param record the record of type {@link R}
+   * @param includeHeaders whether to include headers into the schema
    * @param <R> a type extending {@link ConnectRecord}
-   * @return the {@link KeyValueSchema} wrapper
+   * @return the {@link SchemaCacheKey} wrapper
    */
-  public static <R extends ConnectRecord<R>> KeyValueSchema schemaOf(@NonNull R record) {
-    return KeyValueSchema.of(record.keySchema(), record.valueSchema());
+  static <R extends ConnectRecord<R>> SchemaCacheKey cacheKey(
+      @NonNull R record, boolean includeHeaders) {
+    return SchemaCacheKey.of(
+        record.keySchema(),
+        record.valueSchema(),
+        includeHeaders ? cacheKey(record.headers()) : null);
   }
 
-  public static Schema optionalSchemaOrElse(Schema schema, @NonNull Supplier<Schema> alternative) {
+  static Map<String, List<Schema>> cacheKey(Headers headers) {
+    final Map<String, List<Schema>> key = new HashMap<>();
+    headers.forEach(h -> key.computeIfAbsent(h.key(), k -> new ArrayList<>()).add(h.schema()));
+    return key;
+  }
+
+  static Schema optionalSchemaOrElse(Schema schema, @NonNull Supplier<Schema> alternative) {
     return Optional.ofNullable(schema)
         .map(Schemas::toBuilder)
         .map(SchemaBuilder::optional)
@@ -67,7 +78,7 @@ public class Schemas {
    * @param schema the {@link Schema} to convert
    * @return the {@link SchemaBuilder}
    */
-  public static SchemaBuilder toBuilder(@NonNull Schema schema) {
+  static SchemaBuilder toBuilder(@NonNull Schema schema) {
     SchemaBuilder builder = null;
 
     // basic initialization based on type
@@ -112,5 +123,26 @@ public class Schemas {
     }
 
     return builder;
+  }
+
+  /**
+   * Returns a schema for storing the message headers
+   *
+   * @param headers the message headers (can be null)
+   * @return a struct schema for the headers
+   */
+  static Schema forHeaders(Headers headers) {
+    final SchemaBuilder builder = SchemaBuilder.struct().optional();
+    if (headers != null) {
+      final Map<String, List<Schema>> schemas = new HashMap<>();
+      StreamSupport.stream(headers.spliterator(), false)
+          .forEach(
+              header ->
+                  schemas
+                      .computeIfAbsent(header.key(), k -> new ArrayList<>())
+                      .add(header.schema()));
+      schemas.forEach((key, value) -> builder.field(key, Merger.mergeHeaderSchemas(value)));
+    }
+    return builder.build();
   }
 }
