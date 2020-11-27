@@ -71,5 +71,4 @@ Upcoming features are:
 
  * CI/CD and automated publishing using github packages
  * install script + docker image for ready made connect
- * typed kafka header export
  * schema based export with schema-less keys (if key schema can be derived)

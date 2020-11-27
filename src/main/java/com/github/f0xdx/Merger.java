@@ -15,16 +15,15 @@
  */
 package com.github.f0xdx;
 
+import static com.github.f0xdx.Schemas.toBuilder;
+
+import java.util.*;
 import lombok.NonNull;
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Schema.Type;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.errors.DataException;
-
-import java.util.*;
-
-import static com.github.f0xdx.Schemas.toBuilder;
 
 /** Helper class to merge different schemas together. */
 class Merger {

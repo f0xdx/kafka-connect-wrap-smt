@@ -15,6 +15,9 @@
  */
 package com.github.f0xdx;
 
+import java.util.*;
+import java.util.function.Supplier;
+import java.util.stream.StreamSupport;
 import lombok.NonNull;
 import lombok.Value;
 import org.apache.kafka.connect.connector.ConnectRecord;
@@ -23,10 +26,6 @@ import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.header.Headers;
-
-import java.util.*;
-import java.util.function.Supplier;
-import java.util.stream.StreamSupport;
 
 /** Helper class for {@link Schema} related tasks. */
 class Schemas {
