@@ -22,8 +22,8 @@ To install the latest release, you can download the plugin binaries directly fro
 them from source (see section *Build* below):
 
 ```shell script
-curl -sLJO https://github.com/f0xdx/kafka-connect-wrap-smt/releases/download/v0.1.0/kafka-connect-wrap-smt-0.1.0.jar
-cp kafka-connect-wrap-smt-0.1-SNAPSHOT.jar connect/plugin/folder
+curl -sLJO https://github.com/f0xdx/kafka-connect-wrap-smt/releases/download/v0.2.0/kafka-connect-wrap-smt-0.2.0.jar
+cp kafka-connect-wrap-smt-0.2.0.jar connect/plugin/folder
 ```
 
 Make sure that the plugin folder is picked up by kafka connect by verifying its logs. For instance,
