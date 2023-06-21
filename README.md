@@ -62,7 +62,7 @@ After building, you can deploy the `build/libs/kafka-connect-wrap-smt-0.1-SNAPSH
 plugins folder of your kafka connect instance, e.g.:
 
 ```shell script
-cp build/libs/kafka-connect-wrap-smt-0.1-SNAPSHOT.jar connect/plugin/folder
+cp build/libs/kafka-connect-wrap-smt-0.2.0.jar connect/plugin/folder
 ```
 
 ## Roadmap
